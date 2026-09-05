@@ -34,6 +34,14 @@
 - **storage**: 完整数据集 `第二届轨道交通比赛/提交材料/semi-final/Composite Material_Semi-Final_Dataset/`（105 训练 + 45 测试 .mat，5000×8）；演示样本 `datasets/shm_samples/`（7 条 1.00J）；权重 `railmind/capabilities/shm_impact/weights/best_enhanced_model.pth`（epoch184 版本）
 - **服务能力**: `internal.shm.impact_locator`
 
+### cabin_patrol_v1 — 乘务员车厢巡检视频（演示素材）
+
+- **status**: DEMO_ONLY
+- **source**: 抖音公开素材 @华联田雨（抖音号 1290332714），仅作平台功能演示，不用于训练
+- **storage**: `web/assets/cabin_patrol.mp4`（14.6s，有效分析段 0–11.4s）；证据帧 `railmind/capabilities/cabin_vlm/frames/`；VLM 预计算结果 `railmind/capabilities/cabin_vlm/demo_cache.json`
+- **服务能力**: `internal.cabin.patrol_vlm`（方案 5.5 车内巡检：双窗口 × 6 帧 VLM 固定 JSON + 一致性校验）
+- **⚠️ 合规提醒**: 素材含可识别乘客面部（方案 4.4 数据安全）；**参赛报告/PPT/演示视频中使用须人脸打码或替换为可商用素材，并注明来源**
+
 ### 下载与转换脚本
 
 - `scripts/`（规划）：数据下载、清单校验、哈希登记脚本随能力一并提供

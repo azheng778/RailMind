@@ -1,0 +1,41 @@
+schema_version: "1.0"
+capability_id: internal.cabin.patrol_vlm
+name: 车厢巡检VLM多帧分析
+provider: RailMind-Team
+version: 1.0.0
+
+capability_type: inference_tool
+domain: cabin
+
+supported_scenes:
+  - TRAIN_RUNNING
+  - STATION_STOP
+
+inputs:
+  - name: video_uri   # 巡检视频路径；source=cache 时仅用于证据标注
+    type: video
+  - name: source      # cache=预计算缓存回放（演示默认）；vlm=实时重分析
+    type: string
+
+outputs:
+  - anomaly_type
+  - severity
+  - confidence
+  - windows
+  - consistency
+
+invoke:
+  protocol: PYTHON
+  endpoint: railmind.capabilities.cabin_vlm.adapter:infer
+  timeout_ms: 180000
+
+requires_human_review: true
+
+model_card:
+  architecture: 远端VLM deepseek-v4-flash-vision-exp（DeepSeek 官方 OpenAI 兼容协议，6帧/窗口多图输入）
+  source: 乘务员巡检第一视角视频（抖音公开素材，DEMO_ONLY）+ 方案5.5固定JSON提示词
+  output_scenes: { normal: 正常, smoke: 疑似烟雾或火光, person_on_floor: 人员持续倒地, aisle_blocked: 通道持续堵塞, door_obstruction: 车门区域阻挡, luggage_overhang: 行李架物品伸出, abnormal_gathering: 异常聚集, violent_motion: 疑似剧烈动作, unknown: 无法判断 }
+  limitations:
+    - 不输出"确认暴力事件"等确定性结论；连续两窗口一致才升级告警
+    - 演示缓存为真 VLM 预计算产物（scene=normal，conf 0.95），实时重分析走同一提示词
+    - 公开/模拟数据验证不等同于真实高速动车上线认证

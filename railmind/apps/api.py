@@ -37,6 +37,7 @@ def create_app(platform: Optional[RailMindPlatform] = None) -> FastAPI:
         ("door_evidence", os.path.join(_REPO, "data", "door_evidence")),
         ("fod_evidence", os.path.join(_REPO, "data", "fod_evidence")),
         ("door_demo", os.path.join(_REPO, "railmind", "capabilities", "door_handle")),
+        ("cabin_vlm", os.path.join(_REPO, "railmind", "capabilities", "cabin_vlm")),
     ):
         if os.path.isdir(src):
             app.mount(f"/static/{mount}", StaticFiles(directory=src), name=mount)

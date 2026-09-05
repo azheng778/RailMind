@@ -31,6 +31,7 @@ _KB_BY_DOMAIN = {
     "underbody": {"asset_type": "underbody", "keywords": ["检查门", "处置", "锁闭"]},
     "pantograph": {"asset_type": "pantograph", "keywords": ["处置", "电弧", "滑板磨耗"]},
     "lineside": {"asset_type": "lineside", "keywords": ["异物", "处置", "限界"]},
+    "cabin": {"asset_type": "cabin", "keywords": ["车内巡检", "处置"]},
 }
 
 SYSTEM = (
@@ -163,6 +164,9 @@ class ChiefAgent:
             domain = self._session["domain"]
             agent = self.specialists.get(domain)
             cap_result = self._session.get("cap_result") or {}
+            if not cap_result:
+                # 乱序防护：能力未调用前不允许综合分析，否则空窗口会污染结论（方案 6.2 顺序不可缺）
+                raise RuntimeError("E_NO_CAP_RESULT:请先调用 invoke_capability 再做专业综合分析")
             if agent is None:
                 diag = cap_result.get("diagnosis", {})
                 return {

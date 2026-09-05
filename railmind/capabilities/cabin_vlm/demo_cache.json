@@ -1,0 +1,43 @@
+{
+ "video": "/static/web/assets/cabin_patrol.mp4",
+ "video_seconds": 11.4,
+ "precomputed_at": "live",
+ "windows": [
+  {
+   "scene": "normal",
+   "confidence": 0.95,
+   "summary": "高铁车厢内乘客正常乘坐，过道畅通，未见异常。",
+   "events": [],
+   "degraded": false,
+   "window_index": 1,
+   "start_s": 0.5,
+   "end_s": 6.0,
+   "frames": [
+    "/static/cabin_vlm/frames/w1_f1.jpg",
+    "/static/cabin_vlm/frames/w1_f2.jpg",
+    "/static/cabin_vlm/frames/w1_f3.jpg",
+    "/static/cabin_vlm/frames/w1_f4.jpg",
+    "/static/cabin_vlm/frames/w1_f5.jpg",
+    "/static/cabin_vlm/frames/w1_f6.jpg"
+   ]
+  },
+  {
+   "scene": "normal",
+   "confidence": 0.92,
+   "summary": "车厢内乘客正常就座，过道畅通，无明显异常。",
+   "events": [],
+   "degraded": false,
+   "window_index": 2,
+   "start_s": 6.0,
+   "end_s": 11.4,
+   "frames": [
+    "/static/cabin_vlm/frames/w2_f1.jpg",
+    "/static/cabin_vlm/frames/w2_f2.jpg",
+    "/static/cabin_vlm/frames/w2_f3.jpg",
+    "/static/cabin_vlm/frames/w2_f4.jpg",
+    "/static/cabin_vlm/frames/w2_f5.jpg",
+    "/static/cabin_vlm/frames/w2_f6.jpg"
+   ]
+  }
+ ]
+}

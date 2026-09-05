@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
 
+from railmind.agents.cabin_agent import CabinAgent
 from railmind.agents.lineside_agent import LineSideAgent
 from railmind.agents.panto_agent import PantoAgent
 from railmind.agents.shm_agent import SHMAgent
@@ -51,6 +52,11 @@ BUILTIN_CAPABILITIES = {
         "infer": "railmind.capabilities.lineside_fod.adapter:infer",
         "mode": MODE_PRIMARY,
     },
+    "cabin": {
+        "descriptor": os.path.join(CAP_DIR, "cabin_vlm", "capability.yaml"),
+        "infer": "railmind.capabilities.cabin_vlm.adapter:infer",
+        "mode": MODE_PRIMARY,
+    },
 }
 
 
@@ -87,6 +93,7 @@ class RailMindPlatform:
             "underbody": UnderbodyAgent(event_store=self.events, rag=self.rag, provider=specialist_provider),
             "pantograph": PantoAgent(event_store=self.events, rag=self.rag, provider=specialist_provider),
             "lineside": LineSideAgent(event_store=self.events, rag=self.rag, provider=specialist_provider),
+            "cabin": CabinAgent(event_store=self.events, rag=self.rag, provider=specialist_provider),
         }
         self.chief = ChiefAgent(
             registry=self.registry,

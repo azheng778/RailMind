@@ -52,38 +52,50 @@ class VlmClient:
 
     def analyze_image(self, image_bytes: bytes, prompt: str, mime: str = "jpeg") -> Dict[str, Any]:
         """图 + 提示词 → 解析后的 JSON dict；无法解析时返回 {"_raw": ...} 并标记 degraded。"""
+        return self._analyze([image_bytes], prompt, [mime])
+
+    def analyze_images(self, images: List[bytes], prompt: str, mime: str = "jpeg") -> Dict[str, Any]:
+        """多帧图 + 提示词 → 单个 JSON dict（Cabin 多窗口多帧分析用，方案 5.5）。"""
+        return self._analyze(list(images), prompt, [mime] * len(images))
+
+    def _analyze(self, images: List[bytes], prompt: str, mimes: List[str]) -> Dict[str, Any]:
         if not self.configured:
             raise VlmError("E_VLM_NOT_CONFIGURED:未配置 RAILMIND_LLM_BASE_URL/RAILMIND_LLM_API_KEY")
         import requests  # noqa: PLC0415
 
-        b64 = base64.b64encode(image_bytes).decode()
+        content: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
+        for image_bytes, mime in zip(images, mimes):
+            b64 = base64.b64encode(image_bytes).decode()
+            content.append({"type": "image_url", "image_url": {"url": f"data:image/{mime};base64,{b64}"}})
         resp = requests.post(
             f"{self.base_url}/chat/completions",
             headers={"Authorization": f"Bearer {self.api_key}"},
             json={
                 "model": self.model,
-                "messages": [{"role": "user", "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/{mime};base64,{b64}"}},
-                ]}],
+                "messages": [{"role": "user", "content": content}],
                 "temperature": 0.1,
-                "max_tokens": 500,
+                "max_tokens": 800,
             },
             timeout=self.timeout_s,
         )
         resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"] or ""
-        return _parse_json_loose(content)
+        response = resp.json()
+        content_out = response["choices"][0]["message"]["content"] or ""
+        return _parse_json_loose(content_out)
 
-    def analyze_image_with_fallback(self, image_bytes: bytes, prompt: str, mime: str = "jpeg") -> Dict[str, Any]:
+    def analyze_images_with_fallback(self, images: List[bytes], prompt: str, mime: str = "jpeg") -> Dict[str, Any]:
         """演示稳定性：远端失败时返回 degraded 结果，调用方据此走拒判路径。"""
         try:
-            result = self.analyze_image(image_bytes, prompt, mime)
+            result = self._analyze(list(images), prompt, [mime] * len(images))
             result.setdefault("degraded", False)
             return result
         except Exception as exc:  # noqa: BLE001
             return {"degraded": True, "severity": "UNKNOWN", "confidence": 0.0,
                     "note": f"VLM不可用，转人工复核: {str(exc)[:160]}"}
+
+    def analyze_image_with_fallback(self, image_bytes: bytes, prompt: str, mime: str = "jpeg") -> Dict[str, Any]:
+        """演示稳定性：远端失败时返回 degraded 结果，调用方据此走拒判路径。"""
+        return self.analyze_images_with_fallback([image_bytes], prompt, mime)
 
 
 def _parse_json_loose(text: str) -> Dict[str, Any]:

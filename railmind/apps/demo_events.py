@@ -36,6 +36,19 @@ def build_demo_event(kind: str):
             "note": "车体复合材料区域 Lamb 波传感网触发",
         }
 
+    if kind in ("cabin_patrol", "cabin_live"):
+        video = os.path.join(_REPO, "web", "assets", "cabin_patrol.mp4")
+        if not os.path.exists(video):
+            return None
+        live = kind == "cabin_live"
+        return {
+            "domain": "cabin",
+            "asset": {"train_id": "CRH-05", "carriage_id": "04", "component": "cabin_camera_04"},
+            "operation_context": {"scene": "TRAIN_RUNNING", "speed_kmh": 301},
+            "capability_input": {"video_uri": video, "source": "vlm" if live else "cache"},
+            "note": "乘务员巡检 · 车厢内部多帧VLM分析（" + ("实时重分析" if live else "预计算缓存回放") + "）",
+        }
+
     if kind in ("door_normal", "door_open"):
         fname = "frame_00441.jpg" if kind == "door_normal" else "frame_01017.jpg"
         image = os.path.join(DOOR_DIR, fname)

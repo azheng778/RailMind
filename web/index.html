@@ -135,6 +135,24 @@
   #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 99; display: flex; flex-direction: column; gap: 8px; align-items: center; }
   .toast { background: rgba(10,30,64,.95); border: 1px solid var(--line-strong); border-left: 3px solid var(--cyan); padding: 10px 14px; border-radius: 6px; font-size: 12px; min-width: 240px; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
   .toast.err { border-left-color: var(--danger); }
+  /* Cabin 车内巡检 + 演示模式 */
+  .cabin-video-wrap { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #03080f; }
+  .cabin-video-wrap video { width: 100%; display: block; max-height: 300px; object-fit: cover; }
+  .cabin-badge { position: absolute; top: 8px; left: 8px; font-size: 10.5px; background: rgba(4,12,28,.78); border: 1px solid var(--line-strong); color: var(--cyan); padding: 2px 8px; border-radius: 4px; }
+  .cabin-timeline { position: relative; height: 20px; margin-top: 8px; border: 1px solid rgba(64,156,255,.2); border-radius: 4px; background: rgba(5,14,32,.6); overflow: hidden; }
+  .win-mark { position: absolute; top: 0; height: 100%; font-size: 9.5px; line-height: 20px; text-align: center; color: #9fd0ff; background: rgba(41,224,255,.10); border-right: 1px solid rgba(64,156,255,.25); white-space: nowrap; overflow: hidden; }
+  .win-mark.w2 { background: rgba(176,124,255,.10); border-right: none; }
+  .win-card { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: rgba(10,26,56,.7); margin-bottom: 8px; font-size: 12px; }
+  .win-head { display: flex; align-items: center; gap: 8px; color: #eaf6ff; font-weight: 700; font-size: 12.5px; margin-bottom: 4px; flex-wrap: wrap; }
+  .win-conf { color: var(--dim); font-size: 11px; margin-bottom: 6px; }
+  .win-frames { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 6px; }
+  .win-frames img { width: 100%; height: 52px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(64,156,255,.2); display: block; }
+  .win-sum { line-height: 1.6; }
+  .win-evs { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .cabin-ev { font-size: 10.5px; border: 1px solid rgba(255,176,40,.5); color: #ffe4b0; border-radius: 4px; padding: 1px 7px; background: rgba(255,176,40,.08); }
+  .btn.demo-main { color: #04122b; background: linear-gradient(180deg, #35e0ff, #1d9fd0); border-color: #7fe9ff; font-weight: 700; box-shadow: 0 0 14px rgba(41,224,255,.4); }
+  body.demo-on header { box-shadow: 0 0 24px rgba(41,224,255,.22) inset; }
+  body.demo-on .panel::before { opacity: 1; }
 </style>
 </head>
 <body>
@@ -170,7 +188,8 @@
       当前车辆 <b>CRH-07</b><br>
       复兴号 CR400BF · 8辆编组<br>
       北京南 → 上海虹桥<br>
-      时速 <b>301 km/h</b> · 里程 2876 km
+      时速 <b id="nav-speed">301</b> km/h · 里程 <b id="nav-mileage">2876.0</b> km<br>
+      下一站 <b id="nav-next">南京南</b> · <span id="nav-state">运行中</span>
     </div>
   </nav>
 
@@ -184,6 +203,9 @@
         <button class="btn" onclick="fireDemo('panto_wear')">受电弓磨耗评估</button>
         <button class="btn" onclick="fireDemo('panto_arc')">受电弓电弧（真实数据）</button>
         <button class="btn" onclick="fireDemo('lineside_fod')">轨道异物检测</button>
+        <button class="btn" onclick="fireDemo('cabin_patrol')">车内巡检（VLM）</button>
+        <button class="btn demo-main" onclick="startDemo()">▶ 一键演示 · 评委模式</button>
+        <button class="btn danger" id="demo-stop" style="display:none" onclick="endDemo(false)">■ 结束演示</button>
         <span class="spin" id="demo-status"></span>
       </div>
 
@@ -199,9 +221,9 @@
           <div class="panel">
             <h3>传动系统健康 <span class="tag">振动监测中</span></h3>
             <div class="health">
-              <div class="hrow"><span class="nm">牵引电机</span><span class="score" style="color:var(--ok)">92</span><div class="bar"><i style="width:92%;background:linear-gradient(90deg,#1d8f5f,var(--ok))"></i></div><span class="lv lv-NORMAL">低风险</span></div>
-              <div class="hrow"><span class="nm">齿轮箱</span><span class="score" style="color:var(--warn)">78</span><div class="bar"><i style="width:78%;background:linear-gradient(90deg,#a06a10,var(--warn))"></i></div><span class="lv lv-WARNING">中风险</span></div>
-              <div class="hrow"><span class="nm">轴箱轴承</span><span class="score" style="color:var(--danger)">61</span><div class="bar"><i style="width:61%;background:linear-gradient(90deg,#8f1d2b,var(--danger))"></i></div><span class="lv lv-HIGH">高风险</span></div>
+              <div class="hrow"><span class="nm">牵引电机</span><span class="score js-hmotor" style="color:var(--ok)">92</span><div class="bar"><i class="js-hmotor-bar" style="width:92%;background:linear-gradient(90deg,#1d8f5f,var(--ok))"></i></div><span class="lv lv-NORMAL">低风险</span></div>
+              <div class="hrow"><span class="nm">齿轮箱</span><span class="score js-hgear" style="color:var(--warn)">78</span><div class="bar"><i class="js-hgear-bar" style="width:78%;background:linear-gradient(90deg,#a06a10,var(--warn))"></i></div><span class="lv lv-WARNING">中风险</span></div>
+              <div class="hrow"><span class="nm">轴箱轴承</span><span class="score js-haxle" style="color:var(--danger)">61</span><div class="bar"><i class="js-haxle-bar" style="width:61%;background:linear-gradient(90deg,#8f1d2b,var(--danger))"></i></div><span class="lv lv-HIGH">高风险</span></div>
             </div>
           </div>
         </div>
@@ -295,9 +317,9 @@
           <div class="panel">
             <h3>传动系统健康度</h3>
             <div class="health">
-              <div class="hrow"><span class="nm">牵引电机</span><span class="score" style="color:var(--ok)">92</span><div class="bar"><i style="width:92%;background:linear-gradient(90deg,#1d8f5f,var(--ok))"></i></div><span class="lv lv-NORMAL">低风险</span></div>
-              <div class="hrow"><span class="nm">齿轮箱</span><span class="score" style="color:var(--warn)">78</span><div class="bar"><i style="width:78%;background:linear-gradient(90deg,#a06a10,var(--warn))"></i></div><span class="lv lv-WARNING">中风险</span></div>
-              <div class="hrow"><span class="nm">轴箱轴承</span><span class="score" style="color:var(--danger)">61</span><div class="bar"><i style="width:61%;background:linear-gradient(90deg,#8f1d2b,var(--danger))"></i></div><span class="lv lv-HIGH">高风险</span></div>
+              <div class="hrow"><span class="nm">牵引电机</span><span class="score js-hmotor" style="color:var(--ok)">92</span><div class="bar"><i class="js-hmotor-bar" style="width:92%;background:linear-gradient(90deg,#1d8f5f,var(--ok))"></i></div><span class="lv lv-NORMAL">低风险</span></div>
+              <div class="hrow"><span class="nm">齿轮箱</span><span class="score js-hgear" style="color:var(--warn)">78</span><div class="bar"><i class="js-hgear-bar" style="width:78%;background:linear-gradient(90deg,#a06a10,var(--warn))"></i></div><span class="lv lv-WARNING">中风险</span></div>
+              <div class="hrow"><span class="nm">轴箱轴承</span><span class="score js-haxle" style="color:var(--danger)">61</span><div class="bar"><i class="js-haxle-bar" style="width:61%;background:linear-gradient(90deg,#8f1d2b,var(--danger))"></i></div><span class="lv lv-HIGH">高风险</span></div>
             </div>
             <div class="cap">1D-CNN / 时频图分类为规划项（方案 5.1）；SHM Lamb 波冲击定位已上线（见下方明细）。</div>
           </div>
@@ -340,23 +362,42 @@
     </div>
 
     <div class="section" id="sec-cabin">
-      <div class="panel mb">
-        <h3>Cabin-Agent · 车内开放场景巡检（规划中，方案 5.5）</h3>
-        <div class="flow">
-          <span class="step">视频输入</span><span class="arr">→</span>
-          <span class="step">截取 4–10s 窗口</span><span class="arr">→</span>
-          <span class="step">抽取 6–8 帧</span><span class="arr">→</span>
-          <span class="step">VLM 多图结构化分析（固定 JSON）</span><span class="arr">→</span>
-          <span class="step">相邻窗口一致性检查</span><span class="arr">→</span>
-          <span class="step">人工复核</span>
-        </div>
-        <div class="cap">连续两个窗口一致才升级告警；不输出"确认暴力事件"等确定性结论（方案 5.5 技术要求）。</div>
-      </div>
       <div class="grid g-2">
-        <div class="panel">
-          <h3>事件类别（设计）</h3>
+        <div class="panel mb">
+          <h3>乘务员巡检 · 车厢内部实拍 <span class="tag"><span class="dot"></span>4号车厢相机 · 运行中</span></h3>
+          <div class="cabin-video-wrap">
+            <video id="cabin-video" src="/static/web/assets/cabin_patrol.mp4" muted loop playsinline></video>
+            <div class="cabin-badge" id="cabin-badge">● CAMERA-04 · CRH-05</div>
+          </div>
+          <div class="cabin-timeline">
+            <span class="win-mark" style="left:4%;width:47%">窗口1 · 0.5–6.0s</span>
+            <span class="win-mark w2" style="left:53%;width:45%">窗口2 · 6.0–11.4s</span>
+          </div>
+          <div class="cap">流程（方案 5.5）：视频 → 截取 4–10s 窗口 → 每窗抽取 6 帧 → VLM 多帧结构化分析（固定 JSON）→ 相邻窗口一致性校验 → 连续一致才升级告警。素材为乘务员巡检第一视角（演示素材，来源抖音 @华联田雨，仅供研究演示）。</div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn" onclick="fireDemo('cabin_patrol')">▶ 回放分析（缓存 · 0 token）</button>
+            <button class="btn" onclick="fireDemo('cabin_live')">⟳ 实时重分析（真调 VLM ≈15s）</button>
+          </div>
+        </div>
+        <div>
+          <div class="panel mb">
+            <h3>VLM 窗口分析结果 <span class="tag" id="cabin-src-tag"></span></h3>
+            <div id="cabin-windows"><div class="chief-empty">触发「车内巡检演示」后，这里展示两窗口场景判定、证据帧与一致性结论</div></div>
+          </div>
+          <div class="panel">
+            <h3>巡检事件记录 <span class="tag" id="cabin-tag"></span></h3>
+            <table>
+              <thead><tr><th>时间</th><th>车辆/车厢</th><th>窗口判定</th><th>一致性</th><th>风险</th></tr></thead>
+              <tbody id="cabin-body"><tr><td colspan="5" style="color:var(--dim)">暂无巡检记录</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Cabin-Agent 升级规则（方案 5.5，确定性执行）</h3>
+        <div class="grid g-2">
           <table>
-            <thead><tr><th>类别</th><th>升级条件</th><th>处置</th></tr></thead>
+            <thead><tr><th>事件类别</th><th>升级条件</th><th>处置</th></tr></thead>
             <tbody>
               <tr><td>疑似烟雾或火光</td><td>单窗口高置信</td><td><span class="lv lv-HIGH">HIGH</span></td></tr>
               <tr><td>人员持续倒地</td><td>连续 2 窗口一致</td><td><span class="lv lv-HIGH">HIGH</span></td></tr>
@@ -366,10 +407,10 @@
               <tr><td>无法判断</td><td>—</td><td><span class="lv lv-UNKNOWN">UNKNOWN</span> 拒判</td></tr>
             </tbody>
           </table>
-        </div>
-        <div class="panel">
-          <h3>当前状态</h3>
-          <div class="chief-empty">车厢摄像头接入与 VLM 多帧链路为下一阶段开发项；平台已具备的 VLM 通道可直接复用，预计接入工作量 1-2 天。</div>
+          <div>
+            <div class="cap">VLM 只输出固定 JSON 场景判定；风险等级由 Cabin-Agent 按上表确定性执行，最终由 RiskEngine 融合（方案 6.3），<b>不输出"确认暴力事件"等确定性结论</b>。</div>
+            <div class="cap">分析来源双模式：演示默认回放<b>预计算缓存</b>（真 VLM 产物，答辩 0 token、0 延迟、结果稳定）；「实时重分析」现场真调 DeepSeek V4 Flash Vision（≈15s），证明链路真实。实时视频流（车厢相机/乘务员穿戴终端）按同一能力协议接入，为下一阶段开发项。</div>
+          </div>
         </div>
       </div>
     </div>
@@ -480,6 +521,9 @@ document.querySelectorAll("nav button").forEach(btn => {
     if (btn.dataset.sec === "running") refreshRunning();
     if (btn.dataset.sec === "lineside") refreshLineside();
     if (btn.dataset.sec === "station") refreshStation();
+    if (btn.dataset.sec === "cabin") refreshCabin();
+    cabinPlayState(btn.dataset.sec === "cabin");
+    if (demoActive && !autoNav) demoNavCancelled = true;
   };
 });
 
@@ -511,13 +555,16 @@ let envGen = (() => {
   return (t) => { let e = 0.05; marks.forEach(m => { const d = Math.abs(t - m); if (d < 0.02) e += (1 - d / 0.02) * 0.85; }); return Math.min(1, e + Math.random() * 0.02); };
 })();
 let vFlip = false;
+let arcPulseUntil = 0;
+function arcPulse() { arcPulseUntil = Date.now() + 2600; }
 function vpGen(t) {
   vFlip = !vFlip;
   let v = 0.55 + 0.03 * Math.sin(t * 62) + 0.012 * Math.sin(t * 497);
   if (Math.random() < 0.003) v -= 0.08 * Math.random();
-  return Math.max(0.08, Math.min(1, v + (vFlip ? 0.004 : -0.004)));
+  if (Date.now() < arcPulseUntil) v -= 0.34 + Math.random() * 0.1;
+  return Math.max(0.05, Math.min(1, v + (vFlip ? 0.004 : -0.004)));
 }
-function ipGen(t) { let v = 0.55 + 0.06 * Math.sin(t * 31); if (t > 0.22 && t < 0.26) v = 0.18; return Math.min(1, v + Math.random() * 0.015); }
+function ipGen(t) { let v = 0.55 + 0.06 * Math.sin(t * 31); if (t > 0.22 && t < 0.26) v = 0.18; if (Date.now() < arcPulseUntil) v = 0.12 + Math.random() * 0.05; return Math.min(1, v + Math.random() * 0.015); }
 setInterval(() => {
   if ($("wave-v")) drawWave($("wave-v"), vpGen, "#35e0ff", "rgba(53,224,255,.10)", []);
   if ($("wave-f")) drawWave($("wave-f"), envGen, "#ffb028", null);
@@ -687,15 +734,16 @@ async function refreshStation() {
 }
 
 async function fireDemo(kind) {
-  $("demo-status").textContent = "诊断链路执行中（LLM 编排）…";
+  if (!demoActive) $("demo-status").textContent = "诊断链路执行中（LLM 编排）…";
   try {
     const summary = await api("/api/v1/events/demo/" + kind, { method: "POST" });
     const lvl = summary.risk?.level;
     toast(`✅ ${kind} 完成：风险 <b class="lv lv-${esc(lvl)}">${esc(riskCn(lvl))}</b>` +
       (summary.workorder ? ` · 工单 ${esc(summary.workorder.workorder_id)}` : ""));
   } catch (e) { toast("❌ " + kind + " 失败：" + e.message, true); }
-  $("demo-status").textContent = "";
+  if (!demoActive) $("demo-status").textContent = "";
   refreshAll();
+  if (kind.indexOf("cabin") === 0) refreshCabin();
 }
 
 function toggleChat() {
@@ -750,6 +798,127 @@ async function sendChat() {
     el.textContent = "❌ 请求失败：" + e.message;
   }
   body.scrollTop = body.scrollHeight;
+}
+
+// ---------- 全局活数据（实时模拟层：车辆状态 / 传动健康度） ----------
+let demoActive = false, autoNav = false, demoNavCancelled = false;
+const train = { speed: 301, target: 301, mileage: 2876.0 };
+setInterval(() => {
+  train.speed += (train.target - train.speed) * 0.12 + (Math.random() - 0.5) * (train.target > 0 ? 1.6 : 0);
+  train.speed = Math.max(0, Math.min(310, train.speed));
+  train.mileage += train.speed / 3.6 / 1000;
+  const sp = String(Math.round(train.speed)), ml = train.mileage.toFixed(1);
+  const ns = $("nav-speed"); if (ns) ns.textContent = sp;
+  const nm = $("nav-mileage"); if (nm) nm.textContent = ml;
+}, 1000);
+// 传动系统健康度小幅漂移（模拟在投数据，两个页面同步）
+setInterval(() => {
+  const drift = (min, max) => Math.max(min, Math.min(max, Math.round((min + max) / 2 + (Math.random() - 0.5) * 4)));
+  const hv = { hmotor: drift(88, 95), hgear: drift(74, 83), haxle: drift(57, 66) };
+  for (const k in hv) {
+    document.querySelectorAll(".js-" + k).forEach(el => { el.textContent = hv[k]; });
+    document.querySelectorAll(".js-" + k + "-bar").forEach(el => { el.style.width = hv[k] + "%"; });
+  }
+}, 2600);
+
+// ---------- 车内巡检（Cabin） ----------
+const cabinVid = $("cabin-video");
+if (cabinVid) cabinVid.addEventListener("timeupdate", () => { if (cabinVid.currentTime > 11.4) cabinVid.currentTime = 0; });
+function cabinPlayState(active) {
+  if (!cabinVid) return;
+  if (active) { cabinVid.play().catch(() => {}); }
+  else cabinVid.pause();
+}
+function cabinSceneLv(s) {
+  return s === "normal" ? "NORMAL" : s === "unknown" ? "UNKNOWN"
+    : (s === "smoke" || s === "person_on_floor") ? "HIGH"
+    : (s === "aisle_blocked" || s === "door_obstruction" || s === "luggage_overhang") ? "WARNING" : "OBSERVE";
+}
+function renderCabinWindows(ev) {
+  const d = ev.diagnosis || {};
+  const ws = d.windows || [];
+  if (!ws.length) return;
+  $("cabin-src-tag").textContent = d.analysis_source === "live_vlm" ? "实时 VLM（本次真调）" : "预计算缓存（真VLM产物）";
+  $("cabin-windows").innerHTML = ws.map(w => {
+    const lv = cabinSceneLv(w.scene);
+    const evs = (w.events || []).map(e => `<span class="cabin-ev">${esc(e.type)} · ${Math.round((e.confidence || 0) * 100)}%</span>`).join("");
+    return `<div class="win-card">
+      <div class="win-head">窗口${w.window_index} · ${w.start_s}s–${w.end_s}s <span class="lv lv-${esc(lv)}">${esc(w.scene_cn || w.scene)}</span>${w.degraded ? ' <span class="lv lv-UNKNOWN">降级</span>' : ""}</div>
+      <div class="win-conf">置信度 <b style="color:var(--cyan)">${Math.round((w.confidence || 0) * 100)}%</b></div>
+      <div class="win-frames">${(w.frames || []).map(f => `<img src="${esc(f)}" alt="证据帧">`).join("")}</div>
+      <div class="win-sum">${esc(w.summary || "-")}</div>
+      ${evs ? `<div class="win-evs">${evs}</div>` : ""}
+    </div>`;
+  }).join("")
+    + `<div class="kbref">一致性校验：${esc((d.consistency || {}).note || "-")} · 分析来源：${d.analysis_source === "live_vlm" ? "实时VLM（本次真调）" : "预计算缓存（真VLM预分析，回放 0 token）"}</div>`;
+}
+async function refreshCabin() {
+  try {
+    const raw = await api("/api/v1/events/raw?anomaly=cabin&limit=8");
+    const evs = raw.events;
+    $("cabin-tag").textContent = evs.length ? `最近 ${evs.length} 条` : "";
+    if (evs.length) renderCabinWindows(evs[0]);
+    $("cabin-body").innerHTML = evs.length ? evs.map(ev => {
+      const d = ev.diagnosis || {};
+      const ws = d.windows || [];
+      return `<tr><td>${fmtT(ev.ts)}</td><td>${esc(ev.asset?.train_id || "-")} / ${esc(ev.asset?.carriage_id || "-")}</td>
+        <td>${ws.map(w => w.scene_cn || w.scene).join(" → ") || "-"}</td>
+        <td>${esc((d.consistency || {}).note || "-")}</td>
+        <td><span class="lv lv-${esc(d.severity)}">${esc(riskCn(d.severity))}</span></td></tr>`;
+    }).join("") : `<tr><td colspan="5" style="color:var(--dim)">暂无巡检记录</td></tr>`;
+  } catch (e) { console.error(e); }
+}
+
+// ---------- 演示模式（评委 60s 时间线：真实事件走后端 Chief 全链路） ----------
+let demoTimers = [];
+const DEMO_STEPS = [
+  { t: 0, fn: () => { toast("🎬 演示开始 · CRH-07 北京南 → 上海虹桥 运行中 · 全空间能力在线"); navToSec("overview"); $("demo-status").textContent = "演示进行中 · 开场"; } },
+  { t: 1800, fn: () => { $("demo-status").textContent = "演示进行中 · ① SHM 冲击定位（运行中）"; fireDemo("shm_impact"); } },
+  { t: 7500, fn: () => { $("demo-status").textContent = "演示进行中 · ② 受电弓电弧检测"; fireDemo("panto_arc"); arcPulse(); } },
+  { t: 11500, fn: () => { navToSec("cabin"); $("demo-status").textContent = "演示进行中 · ③ 车内巡检 VLM"; toast("乘务员巡检 · 4号车厢相机接入（运行中）"); } },
+  { t: 13500, fn: () => { fireDemo("cabin_patrol"); } },
+  { t: 24500, fn: () => { navToSec("station"); trainStop("南京南"); $("demo-status").textContent = "演示进行中 · ④ 进站停靠快检"; toast("列车进站停靠（南京南）· 车底检查门快检"); } },
+  { t: 26500, fn: () => { fireDemo("door_open"); } },
+  { t: 34000, fn: () => { trainResume(); fireDemo("panto_wear"); } },
+  { t: 39000, fn: () => { navToSec("lineside"); $("demo-status").textContent = "演示进行中 · ⑤ 轨道异物检测"; fireDemo("lineside_fod"); } },
+  { t: 46000, fn: () => { navToSec("overview"); $("demo-status").textContent = "演示进行中 · 收尾"; } },
+  { t: 48000, fn: () => { endDemo(true); } },
+];
+function startDemo() {
+  demoTimers.forEach(clearTimeout);
+  demoTimers = [];
+  demoActive = true; demoNavCancelled = false;
+  document.body.classList.add("demo-on");
+  $("demo-stop").style.display = "";
+  trainResume();
+  DEMO_STEPS.forEach(s => { if (s.fn) demoTimers.push(setTimeout(s.fn, s.t)); });
+  toast("演示共 6 项能力 · 全部走真实后端编排 · 约 48s");
+}
+function endDemo(finished) {
+  demoTimers.forEach(clearTimeout);
+  demoTimers = []; demoActive = false;
+  document.body.classList.remove("demo-on");
+  $("demo-stop").style.display = "none";
+  $("demo-status").textContent = finished ? "演示完成 ✅" : "";
+  trainResume();
+  if (finished) toast("✅ 演示完成：6 项能力全部在线 · 事件经 Chief-Agent 编排 · 工单可在工单中心人工确认闭环");
+}
+function navToSec(sec) {
+  if (demoActive && demoNavCancelled) return;
+  autoNav = true;
+  const btn = document.querySelector(`nav button[data-sec="${sec}"]`);
+  if (btn) btn.click();
+  autoNav = false;
+}
+function trainStop(stationName) {
+  train.target = 0;
+  const st = $("nav-state"); if (st) st.textContent = "进站停靠";
+  const nx = $("nav-next"); if (nx) nx.textContent = stationName + "（停站中）";
+}
+function trainResume() {
+  train.target = 301;
+  const st = $("nav-state"); if (st) st.textContent = "运行中";
+  const nx = $("nav-next"); if (nx) nx.textContent = "南京南";
 }
 
 refreshAll();
