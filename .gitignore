@@ -21,9 +21,10 @@ data/
 第二届轨道交通比赛/
 semi-final/
 
-# 训练产出与数据集（大文件不入 Git）
+# 训练产出与数据集（大文件不入 Git，仅保留清单）
 runs/
-datasets/
+datasets/*
+!datasets/DATA_MANIFEST.md
 ultralytics-main/
 ultralytics-main.zip
 # 根目录解压的数据集与源码包（大文件，见 datasets/DATA_MANIFEST.md）
