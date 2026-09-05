@@ -62,7 +62,7 @@
 | --- | --- | --- | --- |
 | 受电弓目标检测（3 类 contact_point/mast/strip，train 2275/val 265/test 136） | `高体受电弓设备目标检测数据集 YOLO格式/`（Roboflow pantograph-9bhnb v6，CC BY 4.0） | VERIFIED | **YOLO26n 自训 30ep：mAP50 0.768**（runs/panto_y26n），权重已入 `railmind/capabilities/panto/weights/`，服务 strip 检测引导裁剪 |
 | 轨道异物检测（4 类 niaocao/piaofuwu/qiqiu/suliaodai，train 1779/val 508/test 254） | `RailFOD23.v1i.yolov8/`（Roboflow adeemvlm/railfod23 v1，CC BY 4.0） | VERIFIED | **YOLO26n 自训 30ep：mAP50 0.699**（runs/fod_y26n），权重已入 `railmind/capabilities/lineside_fod/weights/`，服务 `internal.lineside.fod` |
-| 高铁铁轨紧固件缺陷检测（1250 训练 + 100 测试，6 类：弹条变形/断裂/缺失/翻转/移位 + 正常扣件） | `E:/BaiduNetdiskDownload/铁轨紧固件损坏检测数据集 YOLO格式/`（RFDD，Science Data Bank CSTR:149.11.sciencedb.msdc.00071，CC BY 4.0，原始 13.4GB 不入 Git） | VERIFIED | **YOLO26n 自训 30ep：mAP50 0.975 / mAP50-95 0.796**（runs/fastener_y26n），权重已入 `railmind/capabilities/fastener/weights/`，服务 `internal.lineside.fastener`；演示样本 `railmind/capabilities/fastener/samples/` |
+| 高铁铁轨紧固件缺陷检测（1250 训练 + 100 测试，6 类：弹条变形/断裂/缺失/翻转/移位 + 正常扣件） | `E:/BaiduNetdiskDownload/铁轨紧固件损坏检测数据集 YOLO格式/`（RFDD，Science Data Bank CSTR:149.11.sciencedb.msdc.00071，CC BY 4.0，原始 13.4GB 不入 Git）；**全量压缩副本** `datasets/fastener/`（1350 张 560px JPEG + 标签 + data.yaml，88.1MB，本地不入 Git，可直接复现训练） | VERIFIED | **YOLO26n 自训 30ep：mAP50 0.975 / mAP50-95 0.796**（runs/fastener_y26n），权重已入 `railmind/capabilities/fastener/weights/`，服务 `internal.lineside.fastener`；演示样本 `railmind/capabilities/fastener/samples/` |
 
 - 训练脚本：`scripts/train_yolo26.py`（ultralytics 8.4.140，YOLO26n，imgsz 640，batch 16，RTX 3080，两集串行约 40 分钟）
 - 卖家宣传的 mAP（0.92x）基于 v8s + 100 epoch；本项目为突出"最新 YOLO26"叙事用 26n 短训，指标见上，参赛材料如实标注训练配置
