@@ -1,0 +1,44 @@
+schema_version: "1.0"
+capability_id: internal.lineside.fod
+name: 轨道异物检测
+provider: RailMind-Team
+version: 1.0.0
+
+capability_type: inference_tool
+domain: lineside
+
+# 线路侧固定影像点/巡检照片，运行中与停站均可分析
+supported_scenes:
+  - TRAIN_RUNNING
+  - STATION_STOP
+
+inputs:
+  - name: image_uri
+    type: image
+    optional: true
+  - name: image_b64
+    type: image
+    optional: true
+
+outputs:
+  - anomaly_type
+  - severity
+  - confidence
+  - detections
+  - evidence
+
+invoke:
+  protocol: PYTHON
+  endpoint: railmind.capabilities.lineside_fod.adapter:infer
+  timeout_ms: 8000
+
+requires_human_review: true
+
+model_card:
+  architecture: "YOLO26n（ultralytics 8.4.140，端到端 NMS-free）"
+  dataset: RailFOD23（Roboflow universe adeemvlm/railfod23 v1，CC BY 4.0，train 1779 / valid 508 / test 254）
+  classes: { niaocao: 鸟巢, piaofuwu: 漂浮物, qiqiu: 气球, suliaodai: 塑料袋 }
+  severity_rule: 异物框占全图 >5% 为 HIGH，否则 WARNING；未检出为 NORMAL
+  limitations:
+    - 仅覆盖四类常见异物，其他异物类型需扩充数据
+    - 巡检视角差异会影响检出率，实车部署需按点位再整定

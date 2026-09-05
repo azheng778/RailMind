@@ -1,0 +1,42 @@
+schema_version: "1.0"
+capability_id: internal.panto.arc_signal
+name: 受电弓电弧风险信号分析
+provider: RailMind-Team
+version: 1.0.0
+
+capability_type: inference_tool
+domain: pantograph
+
+# 弓网电弧监测在列车运行中即可执行（动静结合）
+supported_scenes:
+  - TRAIN_RUNNING
+
+inputs:
+  - name: mendeley_record   # 三选一: 真实数据集记录{folder,phase,name} / waveform_uri(.npy,.csv,.mat) / synthetic{arc_events,seconds}
+    type: waveform
+    optional: true
+  - name: waveform_uri
+    type: waveform
+    optional: true
+
+outputs:
+  - anomaly_type
+  - severity
+  - confidence
+  - arc_events
+  - arc_score
+  - reasons
+
+invoke:
+  protocol: PYTHON
+  endpoint: railmind.capabilities.panto.arc:infer
+  timeout_ms: 10000
+
+requires_human_review: true
+
+model_card:
+  architecture: 可解释信号链（滑动窗口突变检测 + FFT高频能量 + 事件统计 → 确定性评分）
+  data_source: Mendeley DOI 10.17632/74nz86wcgy (Pantograph Arcing in DC Railway Systems, CC BY 4.0)
+  limitations:
+    - 阈值基于公开数据整定，实车部署需按车型/线路重新整定
+    - 合成波形仅用于演示（DEMO_ONLY）

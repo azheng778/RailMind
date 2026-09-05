@@ -1,0 +1,43 @@
+schema_version: "1.0"
+capability_id: internal.shm.impact_locator
+name: 复合材料结构冲击定位与能量分级
+provider: RailMind-Team
+version: 1.0.0
+
+capability_type: inference_tool
+domain: composite_structure
+
+# Lamb 波传感网在列车运行与停站状态均可工作（动静结合）
+supported_scenes:
+  - TRAIN_RUNNING
+  - STATION_STOP
+
+inputs:
+  - name: signal_uri   # .mat 文件路径（独立服务模式）或 signal 内联矩阵
+    type: lamb_wave_matrix
+
+outputs:
+  - anomaly_type
+  - severity
+  - confidence
+  - impacts
+  - evidence
+
+invoke:
+  protocol: PYTHON          # 进程内直调；独立部署时改为 REST 并指向 /api/v1/inference
+  endpoint: railmind.capabilities.shm_impact.adapter:infer
+  timeout_ms: 5000
+
+requires_human_review: true
+
+# 模型卡摘要（完整版见 docs）
+model_card:
+  architecture: EnhancedLambWaveNet (Residual + PAN-Fusion + CBAM, 565K params)
+  source: semi-final/ 复赛提交模型（第二届复合材料结构健康监测大赛）
+  metrics: { position_rmse_mm: 40.99, energy_accuracy: 0.905, note: 重训版指标 }
+  input: { shape: [5000, 8], unit: "Lamb 波电压信号，8 通道" }
+  output: { positions_mm: 2, energy_levels_j: [0.20, 0.35, 0.50, 0.70, 1.00] }
+  limitations:
+    - 训练数据为航空航天复合材料平板，未在轨道车辆实车结构上验证
+    - 位置 RMSE 约 41mm，坐标用于圈定复核区域而非精确定位
+    - 仅适用于双点冲击场景

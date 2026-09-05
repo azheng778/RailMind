@@ -1,0 +1,43 @@
+schema_version: "1.0"
+capability_id: internal.underbody.door_pose
+name: 检查门门把手角度检测
+provider: RailMind-Team
+version: 1.0.0
+
+capability_type: inference_tool
+domain: underbody
+
+# 车底检查门相机仅在进站停靠/低速通过时允许调用（方案 5.3 场景触发）
+supported_scenes:
+  - STATION_STOP
+  - LOW_SPEED_PASS
+
+inputs:
+  - name: image_uri   # 图像路径 或 image_b64（base64 JPEG/PNG）
+    type: image
+
+outputs:
+  - anomaly_type
+  - severity
+  - confidence
+  - handles
+  - board
+  - evidence
+
+invoke:
+  protocol: PYTHON
+  endpoint: railmind.capabilities.door_handle.adapter:infer
+  timeout_ms: 8000
+
+requires_human_review: true
+
+model_card:
+  architecture: "YOLOv8n-pose (ONNX, 2类: board 门板4点 / handle 把手6点)"
+  source: 团队自研（动车底部包覆结构检查门检测，LabelMe→YOLO 关键点数据集）
+  angle_rule: 把手根部→尖端向量与透视垂直方向偏差角；≤50°正常 / 50-75°警告 / >75°异常
+  board_rule: 门板中心区域透视校正后 Canny 边缘密度 >3900 判盖板异常
+  input: { image: BGR, 任意尺寸，内部 LetterBox 1024 }
+  limitations:
+    - 需同时完整检出 1 门板 + 2 把手，否则拒判转人工复核
+    - 依赖轨旁相机安装视角，大角度侧拍下透视修正误差增大
+    - 仅适用于进站停靠/低速通过场景

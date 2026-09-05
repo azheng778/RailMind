@@ -1,0 +1,38 @@
+schema_version: "1.0"
+capability_id: internal.panto.wear_vlm
+name: 受电弓滑板磨耗VLM评估
+provider: RailMind-Team
+version: 1.0.0
+
+capability_type: inference_tool
+domain: pantograph
+
+supported_scenes:
+  - STATION_STOP
+  - LOW_SPEED_PASS
+
+inputs:
+  - name: image_uri
+    type: image
+
+outputs:
+  - anomaly_type
+  - severity
+  - confidence
+  - wear_level
+  - description
+
+invoke:
+  protocol: PYTHON
+  endpoint: railmind.capabilities.panto.wear:infer
+  timeout_ms: 60000
+
+requires_human_review: true
+
+model_card:
+  architecture: 远端VLM deepseek-v4-flash-vision-exp（OpenAI兼容协议，opencode zen）
+  source: 通用视觉大模型 + 受电弓滑板磨耗固定JSON提示词（方案5.2/5.5）
+  output_levels: { normal: 正常, light: 轻度磨耗, heavy: 明显磨耗, uncertain: 拒判 }
+  limitations:
+    - 低置信度(<0.6)按拒判转人工复核
+    - 公开/模拟数据验证不等同于真实高速动车上线认证

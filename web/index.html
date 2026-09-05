@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RailMind 列车智能运维平台</title>
+<style>
+  :root {
+    --bg0: #040b1c; --panel: rgba(8, 24, 52, .88);
+    --line: rgba(64, 156, 255, .28); --line-strong: rgba(64, 156, 255, .55);
+    --cyan: #29e0ff; --blue: #3f9bff; --txt: #d7e9ff; --dim: #6f8fb8;
+    --ok: #35e08e; --warn: #ffb028; --danger: #ff4d5e; --purple: #b07cff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: radial-gradient(1200px 600px at 50% -10%, #0c2450 0%, var(--bg0) 60%) fixed, var(--bg0); color: var(--txt); font-family: "Microsoft YaHei", "PingFang SC", sans-serif; min-height: 100vh; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; gap: 12px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(10,30,66,.9), rgba(6,17,38,.65)); position: sticky; top: 0; z-index: 50; backdrop-filter: blur(4px); }
+  .logo { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+  .logo .mark { width: 38px; height: 38px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(135deg, #1042a0, #0a1f4d); border: 1px solid var(--line-strong); color: var(--cyan); font-weight: 700; font-size: 18px; box-shadow: 0 0 14px rgba(41,224,255,.25) inset; }
+  .logo b { font-size: 19px; letter-spacing: 1px; }
+  .logo small { display: block; color: var(--dim); font-size: 10.5px; }
+  .title { text-align: center; flex: 1; min-width: 0; }
+  .title h1 { font-size: 21px; letter-spacing: 3px; color: #eaf6ff; text-shadow: 0 0 18px rgba(63,155,255,.75); white-space: nowrap; }
+  .title p { color: var(--dim); font-size: 11px; letter-spacing: 3px; margin-top: 2px; }
+  .stats { display: flex; gap: 10px; flex: 0 0 auto; align-items: center; font-size: 12px; flex-wrap: wrap; justify-content: flex-end; }
+  .stat { background: rgba(13,34,72,.7); border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; white-space: nowrap; }
+  .stat b { font-size: 15px; margin-left: 5px; color: var(--cyan); }
+  .stat.ok b { color: var(--ok); }
+  #clock { color: var(--dim); text-align: right; font-size: 11.5px; line-height: 1.5; flex: 0 0 auto; }
+  .layout { display: flex; min-height: calc(100vh - 62px); }
+  nav { width: 168px; border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 6px; background: linear-gradient(180deg, rgba(8,22,48,.55), transparent); position: sticky; top: 62px; height: calc(100vh - 62px); overflow-y: auto; }
+  nav button { all: unset; cursor: pointer; padding: 11px 14px; border-radius: 8px; color: var(--txt); font-size: 13.5px; display: flex; align-items: center; gap: 10px; border: 1px solid transparent; }
+  nav button:hover { background: rgba(41, 224, 255, .08); }
+  nav button.active { background: linear-gradient(90deg, rgba(41,224,255,.16), rgba(41,224,255,.03)); border-color: var(--line-strong); color: #fff; box-shadow: inset 3px 0 0 var(--cyan); }
+  nav .foot { margin-top: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 11px; color: var(--dim); line-height: 1.8; }
+  nav .foot b { color: var(--cyan); }
+  main { flex: 1; padding: 14px; min-width: 0; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .grid { display: grid; gap: 12px; }
+  .g-main { grid-template-columns: 1.2fr .95fr 1.05fr; align-items: start; }
+  .g-mid { grid-template-columns: 1.6fr 1fr; margin-top: 12px; align-items: start; }
+  .g-2 { grid-template-columns: 1fr 1fr; align-items: start; }
+  @media (max-width: 1280px) { .g-main, .g-mid, .g-2 { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; position: relative; box-shadow: 0 4px 24px rgba(2, 8, 20, .5); }
+  .panel::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; border-radius: 10px 10px 0 0; background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity: .55; }
+  .panel h3 { font-size: 14px; color: #cfeaff; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .panel h3::before { content: ""; width: 3px; height: 14px; background: var(--cyan); border-radius: 2px; box-shadow: 0 0 8px var(--cyan); }
+  .panel .tag { font-size: 11px; color: var(--dim); font-weight: 400; margin-left: auto; }
+  .tag .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); margin-right: 4px; }
+  .mb { margin-bottom: 12px; }
+  .health { display: flex; flex-direction: column; gap: 8px; }
+  .hrow { display: flex; align-items: center; gap: 8px; font-size: 12px; background: rgba(15,38,78,.5); border: 1px solid rgba(64,156,255,.15); border-radius: 6px; padding: 7px 10px; }
+  .hrow .nm { width: 74px; }
+  .hrow .score { font-size: 16px; font-weight: 700; width: 40px; text-align: right; }
+  .hrow .bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(64,156,255,.15); overflow: hidden; }
+  .hrow .bar i { display: block; height: 100%; border-radius: 3px; }
+  canvas.wave { width: 100%; height: 96px; display: block; margin-top: 8px; border: 1px solid rgba(64,156,255,.15); border-radius: 6px; background: rgba(5,14,32,.6); }
+  canvas.wave.lg { height: 150px; }
+  .cap { font-size: 11px; color: var(--dim); margin-top: 4px; line-height: 1.7; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th { color: var(--dim); font-weight: 400; text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 5px 6px; border-bottom: 1px dashed rgba(64,156,255,.12); vertical-align: top; }
+  .lv { padding: 1px 8px; border-radius: 4px; font-size: 11px; display: inline-block; }
+  .lv-HIGH { color: #ffd9dd; background: rgba(255,77,94,.18); border: 1px solid rgba(255,77,94,.5); }
+  .lv-WARNING { color: #ffe9c2; background: rgba(255,176,40,.14); border: 1px solid rgba(255,176,40,.5); }
+  .lv-OBSERVE { color: #d2f7ff; background: rgba(41,224,255,.10); border: 1px solid rgba(41,224,255,.35); }
+  .lv-NORMAL { color: #d3ffe9; background: rgba(53,224,142,.12); border: 1px solid rgba(53,224,142,.4); }
+  .lv-UNKNOWN { color: #e6ddff; background: rgba(176,124,255,.14); border: 1px solid rgba(176,124,255,.45); }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; }
+  .mode { padding: 1px 8px; border-radius: 4px; font-size: 11px; }
+  .mode-PRIMARY { color: #d3ffe9; background: rgba(53,224,142,.15); }
+  .mode-AUXILIARY { color: #ffe9c2; background: rgba(255,176,40,.14); }
+  .mode-OBSERVE, .mode-STANDBY { color: #d2f7ff; background: rgba(41,224,255,.10); }
+  .mode-DISABLED { color: #ffb9c0; background: rgba(255,77,94,.12); }
+  .btn { all: unset; cursor: pointer; font-size: 12px; padding: 6px 13px; border-radius: 6px; color: #d9efff; background: linear-gradient(180deg, #143a7c, #0c2450); border: 1px solid var(--line-strong); display: inline-block; }
+  .btn:hover { box-shadow: 0 0 12px rgba(41,224,255,.35); color: #fff; }
+  .btn.mini { font-size: 11px; padding: 3px 9px; }
+  .btn.danger { color: #ffd9dd; border-color: rgba(255,77,94,.5); }
+  .btn.ok { color: #d3ffe9; border-color: rgba(53,224,142,.5); }
+  .conclusion { font-size: 13px; line-height: 1.65; margin: 8px 0; color: #eaf6ff; }
+  .reasons { font-size: 11.5px; color: var(--dim); line-height: 1.7; }
+  .reasons li { margin-left: 16px; }
+  .kbref { font-size: 11px; color: #9fd0ff; background: rgba(63,155,255,.08); border-left: 2px solid var(--blue); padding: 4px 8px; margin-top: 6px; border-radius: 0 4px 4px 0; line-height: 1.6; }
+  .action { margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: rgba(255,176,40,.08); border: 1px dashed rgba(255,176,40,.5); color: #ffe4b0; font-size: 12px; line-height: 1.6; }
+  .chief-empty { color: var(--dim); font-size: 12px; padding: 14px 0; text-align: center; }
+  .capcard { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: rgba(10, 26, 56, .75); font-size: 12px; }
+  .capcard h4 { font-size: 13px; color: #eaf6ff; margin-bottom: 4px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .capcard .cid { color: var(--dim); font-size: 10.5px; margin-bottom: 8px; word-break: break-all; }
+  .capcard .meta { display: flex; gap: 10px; color: var(--dim); font-size: 11px; flex-wrap: wrap; }
+  .caps { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 10px; }
+  .addcap { border: 1px dashed var(--line-strong); border-radius: 8px; display: grid; place-items: center; color: var(--cyan); font-size: 13px; min-height: 96px; cursor: pointer; text-align: center; }
+  .addcap:hover { background: rgba(41,224,255,.06); }
+  .imgpair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .imgpair figure, .thumb, .shot { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #06122a; }
+  .imgpair img { width: 100%; height: 210px; object-fit: cover; object-position: center top; display: block; }
+  .imgpair img.fit { object-fit: contain; background: #03080f; }
+  .imgpair figcaption, .thumb p, .shot p { font-size: 10.5px; color: var(--dim); padding: 5px 8px; border-top: 1px solid rgba(64,156,255,.15); line-height: 1.5; }
+  .thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .thumbs img { width: 100%; height: 104px; object-fit: cover; display: block; }
+  .ragnums { display: grid; grid-template-columns: repeat(3, 1fr); text-align: center; margin-bottom: 10px; }
+  .ragnums b { font-size: 22px; color: var(--cyan); display: block; }
+  .ragnums span { font-size: 11px; color: var(--dim); }
+  .hotwords { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .hotwords span { font-size: 11px; border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; color: #9fc4ef; cursor: default; }
+  .kbcards { display: flex; flex-direction: column; gap: 8px; }
+  .kbcard { border: 1px solid rgba(64,156,255,.2); border-left: 3px solid var(--blue); border-radius: 0 8px 8px 0; padding: 8px 11px; background: rgba(63,155,255,.06); font-size: 12px; line-height: 1.7; }
+  .kbcard b { color: #cfeaff; }
+  .kbcard .meta { color: var(--dim); font-size: 10.5px; margin: 2px 0 4px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .metric { background: rgba(15,38,78,.5); border: 1px solid rgba(64,156,255,.18); border-radius: 8px; padding: 10px; text-align: center; }
+  .metric b { font-size: 20px; color: var(--cyan); display: block; }
+  .metric span { font-size: 10.5px; color: var(--dim); }
+  .flow { display: flex; align-items: stretch; gap: 6px; flex-wrap: wrap; font-size: 11.5px; margin: 8px 0; }
+  .flow .step { background: rgba(15,38,78,.6); border: 1px solid var(--line); border-radius: 6px; padding: 7px 11px; }
+  .flow .arr { align-self: center; color: var(--cyan); }
+  .demo-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .demo-bar b { font-size: 13px; color: #cfeaff; }
+  .demo-bar .spin { color: var(--dim); font-size: 12px; }
+  #chat-fab { position: fixed; right: 22px; bottom: 22px; z-index: 98; width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #143a7c, #0c2450); border: 1px solid var(--line-strong); color: var(--cyan); font-size: 22px; display: grid; place-items: center; cursor: pointer; box-shadow: 0 6px 24px rgba(41,224,255,.3); }
+  #chat-fab:hover { box-shadow: 0 0 18px rgba(41,224,255,.55); }
+  #chat-win { position: fixed; right: 22px; bottom: 86px; z-index: 98; width: 400px; height: 520px; max-height: calc(100vh - 110px); background: var(--panel); border: 1px solid var(--line-strong); border-radius: 12px; display: none; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.6); overflow: hidden; }
+  #chat-win.open { display: flex; }
+  .chat-head { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .chat-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+  .chat-head span.x { margin-left: auto; color: var(--dim); cursor: pointer; }
+  .chat-body { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 92%; padding: 8px 11px; border-radius: 8px; font-size: 12.5px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: linear-gradient(135deg, #17437f, #0e2a5c); border: 1px solid var(--line-strong); }
+  .msg.bot { align-self: flex-start; background: rgba(15,38,78,.75); border: 1px solid rgba(64,156,255,.2); }
+  .msg .tools { margin-top: 5px; font-size: 10.5px; color: var(--dim); }
+  .chat-input { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--line); }
+  .chat-input input { flex: 1; background: rgba(6,18,40,.9); border: 1px solid var(--line); border-radius: 6px; color: var(--txt); padding: 8px 10px; font-size: 12.5px; outline: none; }
+  .chat-input input:focus { border-color: var(--cyan); }
+  .chat-input button { all: unset; cursor: pointer; background: linear-gradient(180deg,#17437f,#0c2450); border: 1px solid var(--line-strong); color: var(--cyan); padding: 7px 14px; border-radius: 6px; font-size: 12.5px; }
+  #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 99; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { background: rgba(10,30,64,.95); border: 1px solid var(--line-strong); border-left: 3px solid var(--cyan); padding: 10px 14px; border-radius: 6px; font-size: 12px; min-width: 240px; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+  .toast.err { border-left-color: var(--danger); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="mark">R</div>
+    <div><b>RailMind</b><small>Train Intelligent O&amp;M Platform</small></div>
+  </div>
+  <div class="title">
+    <h1>RailMind 列车智能运维平台</h1>
+    <p>全空间 · 动静结合 · 开放能力接入</p>
+  </div>
+  <div class="stats">
+    <div class="stat ok">● 系统状态<b id="st-sys">正常运行</b></div>
+    <div class="stat">在线能力<b id="st-caps">-</b></div>
+    <div class="stat">活跃工单<b id="st-wo">-</b></div>
+    <div class="stat">告警总数<b id="st-alarms">-</b></div>
+    <div id="clock">--:--:--<br>----</div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav>
+    <button data-sec="overview" class="active">🛰 综合态势</button>
+    <button data-sec="running">⚙ 运行中监测</button>
+    <button data-sec="station">🚉 进站快检</button>
+    <button data-sec="cabin">🚃 车内巡检</button>
+    <button data-sec="lineside">🛤 线路侧任务</button>
+    <button data-sec="caps">🧩 能力中心</button>
+    <button data-sec="kb">📖 知识中心</button>
+    <button data-sec="wo">🗂 工单中心</button>
+    <div class="foot">
+      当前车辆 <b>CRH-07</b><br>
+      复兴号 CR400BF · 8辆编组<br>
+      北京南 → 上海虹桥<br>
+      时速 <b>301 km/h</b> · 里程 2876 km
+    </div>
+  </nav>
+
+  <main>
+    <div class="section active" id="sec-overview">
+      <div class="demo-bar">
+        <b>演示控制台：</b>
+        <button class="btn" onclick="fireDemo('shm_impact')">SHM 冲击（运行中）</button>
+        <button class="btn" onclick="fireDemo('door_normal')">检查门·正常</button>
+        <button class="btn" onclick="fireDemo('door_open')">检查门·异常</button>
+        <button class="btn" onclick="fireDemo('panto_wear')">受电弓磨耗评估</button>
+        <button class="btn" onclick="fireDemo('panto_arc')">受电弓电弧（真实数据）</button>
+        <button class="btn" onclick="fireDemo('lineside_fod')">轨道异物检测</button>
+        <span class="spin" id="demo-status"></span>
+      </div>
+
+      <div class="grid g-main">
+        <div>
+          <div class="panel mb">
+            <h3>受电弓电压 / 电弧监测 <span class="tag"><span class="dot"></span>实时采样 50kHz</span></h3>
+            <canvas class="wave" id="wave-v"></canvas>
+            <div class="cap">时域波形 Vp（直流 3kV + 纹波）· 数据集 Mendeley 10.17632/74nz86wcgy</div>
+            <canvas class="wave" id="wave-f"></canvas>
+            <div class="cap">高频能量包络（滑动窗口突变检测，超阈值判定电弧事件）</div>
+          </div>
+          <div class="panel">
+            <h3>传动系统健康 <span class="tag">振动监测中</span></h3>
+            <div class="health">
+              <div class="hrow"><span class="nm">牵引电机</span><span class="score" style="color:var(--ok)">92</span><div class="bar"><i style="width:92%;background:linear-gradient(90deg,#1d8f5f,var(--ok))"></i></div><span class="lv lv-NORMAL">低风险</span></div>
+              <div class="hrow"><span class="nm">齿轮箱</span><span class="score" style="color:var(--warn)">78</span><div class="bar"><i style="width:78%;background:linear-gradient(90deg,#a06a10,var(--warn))"></i></div><span class="lv lv-WARNING">中风险</span></div>
+              <div class="hrow"><span class="nm">轴箱轴承</span><span class="score" style="color:var(--danger)">61</span><div class="bar"><i style="width:61%;background:linear-gradient(90deg,#8f1d2b,var(--danger))"></i></div><span class="lv lv-HIGH">高风险</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel mb">
+            <h3>全空间覆盖监测视图</h3>
+            <div style="text-align:center;padding:4px 0">
+              <svg viewBox="0 0 460 130" style="width:100%;max-width:440px;filter:drop-shadow(0 0 18px rgba(63,155,255,.35))">
+                <defs><linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dbe9ff"/><stop offset="1" stop-color="#8fb4e8"/></linearGradient></defs>
+                <line x1="10" y1="112" x2="450" y2="112" stroke="#22406f" stroke-width="3"/>
+                <path d="M28 96 L52 62 Q58 52 74 50 L360 50 Q398 50 420 68 L436 84 Q440 92 432 96 Z" fill="url(#body)" stroke="#3f6db0"/>
+                <rect x="86" y="60" width="44" height="18" rx="3" fill="#28486e" opacity=".8"/><rect x="140" y="60" width="44" height="18" rx="3" fill="#28486e" opacity=".8"/>
+                <rect x="194" y="60" width="44" height="18" rx="3" fill="#28486e" opacity=".8"/><rect x="248" y="60" width="44" height="18" rx="3" fill="#28486e" opacity=".8"/>
+                <rect x="302" y="60" width="44" height="18" rx="3" fill="#28486e" opacity=".8"/>
+                <path d="M120 50 L128 34 L140 34 M134 50 L142 34" stroke="#9fc4ef" stroke-width="2.5" fill="none"/>
+                <rect x="122" y="26" width="24" height="7" rx="2" fill="#9fc4ef"/><line x1="134" y1="26" x2="134" y2="16" stroke="#cfe6ff" stroke-width="2"/>
+                <circle cx="66" cy="99" r="9" fill="#0b1e3e" stroke="#5b83c4"/><circle cx="102" cy="99" r="9" fill="#0b1e3e" stroke="#5b83c4"/>
+                <circle cx="392" cy="99" r="9" fill="#0b1e3e" stroke="#5b83c4"/><circle cx="420" cy="99" r="9" fill="#0b1e3e" stroke="#5b83c4"/>
+              </svg>
+            </div>
+            <div class="cap" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center">
+              <span>① 车顶受电弓</span><span>② 走行部/传动</span><span>③ 车底包覆</span><span>④ 车轮表面</span><span>⑤ 车内场景</span>
+            </div>
+            <div class="thumbs">
+              <figure class="thumb"><img src="/static/door_demo/demo_clean.jpg" alt="检查门"><p>③ 车底检查门·把手角度</p></figure>
+              <figure class="thumb"><img src="/static/panto_samples/video_frame_0242.jpg" alt="受电弓"><p>① 受电弓·磨耗/电弧</p></figure>
+              <figure class="thumb"><img src="/static/door_demo/det_frame_01017.jpg" alt="结果"><p>③ 检测结果·把手85°异常</p></figure>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>RAG 知识库</h3>
+            <div class="ragnums">
+              <div><b id="kb-docs">-</b><span>文档量</span></div>
+              <div><b id="kb-chunks">-</b><span>知识块</span></div>
+              <div><b id="kb-queries">-</b><span>累计检索</span></div>
+            </div>
+            <div id="kb-refs"></div>
+            <div class="hotwords">
+              <span>受电弓电弧诊断</span><span>车底检查标准</span><span>齿轮箱振动分析</span><span>车轮缺陷分级</span><span>车内安全巡检规范</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel mb">
+            <h3>Chief-Agent 辅助决策 <span class="badge lv-UNKNOWN" id="chief-risk">待触发</span></h3>
+            <div id="chief-body"><div class="chief-empty">触发演示事件后，这里展示证据融合、风险评分与 RAG 引用</div></div>
+          </div>
+          <div class="panel">
+            <h3>告警与工单概览 <span class="tag" id="alert-tag"></span></h3>
+            <table>
+              <thead><tr><th>时间</th><th>车辆</th><th>部件</th><th>事件</th><th>风险</th><th>工单</th></tr></thead>
+              <tbody id="alert-body"><tr><td colspan="6" style="color:var(--dim)">暂无告警</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid g-mid">
+        <div class="panel">
+          <h3>开放能力中心 <span class="tag">热插拔能力 · 按需接入与编排</span></h3>
+          <div class="caps" id="caps-grid"></div>
+        </div>
+        <div class="panel">
+          <h3>进站停靠快检 <span class="tag"><span class="dot"></span>静态快检中</span></h3>
+          <div class="imgpair">
+            <figure><img class="fit" src="/static/door_demo/demo_clean.jpg"><figcaption>输入 · 轨旁相机原图</figcaption></figure>
+            <figure><img class="fit" src="/static/door_demo/det_frame_01017.jpg"><figcaption>输出 · 把手 85.4°/90.9° HIGH</figcaption></figure>
+          </div>
+          <div class="cap" style="margin-top:8px">把手角度判据：≤50° 正常 · 50–75° 警告 · &gt;75° 异常；盖板边缘密度 &gt;3900 判包覆板异常；信息不全自动拒判转人工复核。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-running">
+      <div class="grid g-2">
+        <div class="panel mb">
+          <h3>受电弓电压电流波形 <span class="tag"><span class="dot"></span>实时</span></h3>
+          <canvas class="wave lg" id="run-v"></canvas>
+          <div class="cap">Vp 时域 · 电弧瞬间伴随电压跌落与宽频噪声（红色标记为事件窗口）</div>
+          <canvas class="wave lg" id="run-i"></canvas>
+          <div class="cap">Ip 电流 · 电弧限流导致平顶特征</div>
+        </div>
+        <div>
+          <div class="panel mb">
+            <h3>电弧事件统计 <span class="tag" id="arc-tag"></span></h3>
+            <div class="metric-grid" id="arc-metrics"><div class="metric"><b>-</b><span>暂无电弧分析记录</span></div></div>
+            <div class="cap" style="margin-top:8px">数据源：Mendeley《Pantograph Arcing in DC Railway Systems》（DOI 10.17632/74nz86wcgy，CC BY 4.0）+ 平台实时分析。触发综合态势页「受电弓电弧」按钮后显示最新分析。</div>
+          </div>
+          <div class="panel">
+            <h3>传动系统健康度</h3>
+            <div class="health">
+              <div class="hrow"><span class="nm">牵引电机</span><span class="score" style="color:var(--ok)">92</span><div class="bar"><i style="width:92%;background:linear-gradient(90deg,#1d8f5f,var(--ok))"></i></div><span class="lv lv-NORMAL">低风险</span></div>
+              <div class="hrow"><span class="nm">齿轮箱</span><span class="score" style="color:var(--warn)">78</span><div class="bar"><i style="width:78%;background:linear-gradient(90deg,#a06a10,var(--warn))"></i></div><span class="lv lv-WARNING">中风险</span></div>
+              <div class="hrow"><span class="nm">轴箱轴承</span><span class="score" style="color:var(--danger)">61</span><div class="bar"><i style="width:61%;background:linear-gradient(90deg,#8f1d2b,var(--danger))"></i></div><span class="lv lv-HIGH">高风险</span></div>
+            </div>
+            <div class="cap">1D-CNN / 时频图分类为规划项（方案 5.1）；SHM Lamb 波冲击定位已上线（见下方明细）。</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>SHM 冲击事件明细 <span class="tag" id="shm-tag"></span></h3>
+        <table>
+          <thead><tr><th>时间</th><th>车辆</th><th>部件</th><th>冲击点1 (x,y / 能量)</th><th>冲击点2</th><th>最大能量</th><th>严重度</th></tr></thead>
+          <tbody id="shm-body"><tr><td colspan="7" style="color:var(--dim)">暂无 SHM 事件，触发「SHM 冲击」后显示</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section" id="sec-station">
+      <div class="grid g-2">
+        <div class="panel mb">
+          <h3>检查门检测 · 输入/输出对比</h3>
+          <div class="imgpair">
+            <figure><img class="fit" src="/static/door_demo/demo_clean.jpg"><figcaption>输入 · 轨旁相机原图（关门状态）</figcaption></figure>
+            <figure><img class="fit" src="/static/door_demo/det_frame_01017.jpg"><figcaption>输出 · 开门状态把手 85.4°/90.9° → HIGH</figcaption></figure>
+          </div>
+          <div class="cap" style="margin-top:8px">模型：YOLOv8n-pose（board 门板 4 关键点 / handle 把手 6 关键点）· 角度判据 ≤50° 正常 · 50–75° 警告 · &gt;75° 异常；盖板透视校正后 Canny 边缘密度 &gt;3900 判包覆板异常；门板+双把手不完整自动拒判转人工。</div>
+        </div>
+        <div>
+          <div class="panel mb">
+            <h3>受电弓磨耗评估 <span class="tag">strip 裁剪 → VLM</span></h3>
+            <figure class="shot"><img src="/static/panto_samples/video_frame_0242.jpg" style="width:100%;height:190px;object-fit:cover;display:block"><figcaption>评估对象示例 · 受电弓滑板（YOLO26n 定位 strip 后裁剪送 VLM）</figcaption></figure>
+            <div class="cap">分级：normal 正常 / light 轻度 / heavy 明显磨耗 / uncertain 低置信度拒判；置信度 &lt;0.6 自动转人工复核。</div>
+          </div>
+          <div class="panel">
+            <h3>快检事件记录</h3>
+            <table>
+              <thead><tr><th>时间</th><th>车辆/部件</th><th>结果</th><th>风险</th></tr></thead>
+              <tbody id="station-body"><tr><td colspan="4" style="color:var(--dim)">暂无快检记录</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-cabin">
+      <div class="panel mb">
+        <h3>Cabin-Agent · 车内开放场景巡检（规划中，方案 5.5）</h3>
+        <div class="flow">
+          <span class="step">视频输入</span><span class="arr">→</span>
+          <span class="step">截取 4–10s 窗口</span><span class="arr">→</span>
+          <span class="step">抽取 6–8 帧</span><span class="arr">→</span>
+          <span class="step">VLM 多图结构化分析（固定 JSON）</span><span class="arr">→</span>
+          <span class="step">相邻窗口一致性检查</span><span class="arr">→</span>
+          <span class="step">人工复核</span>
+        </div>
+        <div class="cap">连续两个窗口一致才升级告警；不输出"确认暴力事件"等确定性结论（方案 5.5 技术要求）。</div>
+      </div>
+      <div class="grid g-2">
+        <div class="panel">
+          <h3>事件类别（设计）</h3>
+          <table>
+            <thead><tr><th>类别</th><th>升级条件</th><th>处置</th></tr></thead>
+            <tbody>
+              <tr><td>疑似烟雾或火光</td><td>单窗口高置信</td><td><span class="lv lv-HIGH">HIGH</span></td></tr>
+              <tr><td>人员持续倒地</td><td>连续 2 窗口一致</td><td><span class="lv lv-HIGH">HIGH</span></td></tr>
+              <tr><td>通道持续堵塞 / 行李占道</td><td>连续 2 窗口一致</td><td><span class="lv lv-WARNING">WARNING</span></td></tr>
+              <tr><td>车门区域阻挡</td><td>连续 2 窗口一致</td><td><span class="lv lv-WARNING">WARNING</span></td></tr>
+              <tr><td>异常聚集 / 剧烈动作</td><td>连续 2 窗口一致 + 人工复核</td><td><span class="lv lv-OBSERVE">OBSERVE</span></td></tr>
+              <tr><td>无法判断</td><td>—</td><td><span class="lv lv-UNKNOWN">UNKNOWN</span> 拒判</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h3>当前状态</h3>
+          <div class="chief-empty">车厢摄像头接入与 VLM 多帧链路为下一阶段开发项；平台已具备的 VLM 通道可直接复用，预计接入工作量 1-2 天。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-lineside">
+      <div class="panel mb">
+        <h3>轨道异物检测 · YOLO26n（RailFOD23 数据集训练）</h3>
+        <div class="metric-grid">
+          <div class="metric"><b id="fod-metric-count">0</b><span>近期检测事件</span></div>
+          <div class="metric"><b>4 类</b><span>鸟巢/漂浮物/气球/塑料袋</span></div>
+          <div class="metric"><b>0.699</b><span>mAP50（YOLO26n 30ep）</span></div>
+          <div class="metric"><b>2541 张</b><span>训练数据（CC BY 4.0）</span></div>
+        </div>
+        <div class="cap" style="margin-top:8px">面积占比 &gt;5% 判 HIGH（限界风险），否则 WARNING；未检出 NORMAL。检测可视化图自动存档为证据。</div>
+      </div>
+      <div class="panel">
+        <h3>异物检测明细</h3>
+        <table>
+          <thead><tr><th>时间</th><th>车辆/区段</th><th>异物</th><th>面积占比</th><th>风险</th><th>证据</th></tr></thead>
+          <tbody id="fod-body"><tr><td colspan="6" style="color:var(--dim)">暂无检测记录，触发「轨道异物检测」后显示</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section" id="sec-caps">
+      <div class="panel mb">
+        <h3>能力中心 <span class="tag">热插拔能力 · 按需接入与编排</span></h3>
+        <div class="caps" id="caps-grid"></div>
+        <div class="cap" style="margin-top:10px">
+          外部能力热加载：以 REST 服务启动 <b style="color:var(--cyan)">railmind.capabilities.shm_impact.service</b>（--port 8901），
+          再 POST /api/v1/capabilities/register 提交能力描述 —— 平台不重启、不改 Chief 主代码即可发现并调用（方案 2.2）。
+        </div>
+      </div>
+      <div class="panel">
+        <h3>能力运行模式（方案 8.3）</h3>
+        <table>
+          <thead><tr><th>模式</th><th>作用</th></tr></thead>
+          <tbody>
+            <tr><td><span class="mode mode-PRIMARY">主用</span></td><td>当前主要诊断能力，Chief 优先分派</td></tr>
+            <tr><td><span class="mode mode-STANDBY">备用</span></td><td>主用失效时自动接管</td></tr>
+            <tr><td><span class="mode mode-AUXILIARY">辅助</span></td><td>参与风险融合，结论强制人工确认</td></tr>
+            <tr><td><span class="mode mode-OBSERVE">观察</span></td><td>只运行记录，不参与分派</td></tr>
+            <tr><td><span class="mode mode-DISABLED">禁用</span></td><td>不接收任务</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section" id="sec-kb">
+      <div class="panel mb">
+        <h3>知识库总览</h3>
+        <div class="ragnums">
+          <div><b id="kb-docs2">-</b><span>文档量</span></div>
+          <div><b id="kb-chunks2">-</b><span>知识块</span></div>
+          <div><b id="kb-queries2">-</b><span>累计检索</span></div>
+        </div>
+        <div class="cap">混合检索：元数据过滤（领域/故障类型/权限/版本）+ 关键词重合打分；检索不到可靠依据时固定拒答（方案 7.8）。接口与 PostgreSQL 结构化库 + Qdrant 向量召回的完整实现保持一致，可平滑替换。</div>
+      </div>
+      <div class="panel">
+        <h3>知识条目</h3>
+        <div class="kbcards" id="kb-cards"></div>
+      </div>
+    </div>
+
+    <div class="section" id="sec-wo">
+      <div class="panel">
+        <h3>工单中心 <span class="tag">高风险事件 → 草稿 → 人工确认 → 闭环</span></h3>
+        <table>
+          <thead><tr><th>工单号</th><th>状态</th><th>车辆</th><th>部件</th><th>风险</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="wo-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="chat-fab" onclick="toggleChat()">💬</div>
+<div id="chat-win">
+  <div class="chat-head"><span class="dot"></span> RailMind 运维助手 · <span style="color:var(--cyan)" id="chat-brain">…</span><span class="x" onclick="toggleChat()">✕</span></div>
+  <div class="chat-body" id="chat-body">
+    <div class="msg bot">你好！我是 RailMind 运维助手。可以问我：最近有什么告警？工单进展如何？受电弓异常怎么处置？也可以让我演示一次诊断（如"演示一次受电弓电弧检测"）。</div>
+  </div>
+  <div class="chat-input">
+    <input id="chat-text" placeholder="输入问题，回车发送…" onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()">发送</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtT = (ts) => { const d = new Date((ts || 0) * 1000); const p = n => String(n).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+const riskCn = (l) => ({ HIGH: "高", WARNING: "中", OBSERVE: "低", NORMAL: "正常", UNKNOWN: "待复核" }[l] || l || "-");
+const modeCn = (m) => ({ PRIMARY: "主用", AUXILIARY: "辅助", OBSERVE: "观察", STANDBY: "备用", DISABLED: "禁用" }[m] || m);
+
+setInterval(() => {
+  const d = new Date(); const p = n => String(n).padStart(2, "0");
+  $("clock").innerHTML = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}<br>${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}, 1000);
+
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+    btn.classList.add("active");
+    $("sec-" + btn.dataset.sec).classList.add("active");
+    if (btn.dataset.sec === "running") refreshRunning();
+    if (btn.dataset.sec === "lineside") refreshLineside();
+    if (btn.dataset.sec === "station") refreshStation();
+  };
+});
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(path + " -> " + r.status);
+  return r.json();
+}
+
+function drawWave(canvas, gen, color, fill, marks) {
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  if (!cw || !ch) return; // 隐藏 section 的 canvas 尺寸为 0，直接跳过（避免步长为 0 死循环）
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width = cw * 2, H = canvas.height = ch * 2;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(64,156,255,.14)"; ctx.lineWidth = 1;
+  for (let y = 0; y <= H; y += Math.max(1, H / 4)) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.beginPath();
+  for (let x = 0; x < W; x++) { const y = H - gen(x / W) * (H - 16) - 8; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+  if (fill) { ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); }
+  (marks || []).forEach(m => {
+    ctx.fillStyle = "rgba(255,77,94,.18)"; ctx.fillRect(m * W - 8, 0, 16, H);
+    ctx.fillStyle = "#ff4d5e"; ctx.fillRect(m * W - 1, 0, 2, H);
+  });
+}
+let envGen = (() => {
+  const marks = [0.18 + Math.random() * 0.1, 0.52 + Math.random() * 0.1, 0.83 + Math.random() * 0.1];
+  return (t) => { let e = 0.05; marks.forEach(m => { const d = Math.abs(t - m); if (d < 0.02) e += (1 - d / 0.02) * 0.85; }); return Math.min(1, e + Math.random() * 0.02); };
+})();
+let vFlip = false;
+function vpGen(t) {
+  vFlip = !vFlip;
+  let v = 0.55 + 0.03 * Math.sin(t * 62) + 0.012 * Math.sin(t * 497);
+  if (Math.random() < 0.003) v -= 0.08 * Math.random();
+  return Math.max(0.08, Math.min(1, v + (vFlip ? 0.004 : -0.004)));
+}
+function ipGen(t) { let v = 0.55 + 0.06 * Math.sin(t * 31); if (t > 0.22 && t < 0.26) v = 0.18; return Math.min(1, v + Math.random() * 0.015); }
+setInterval(() => {
+  if ($("wave-v")) drawWave($("wave-v"), vpGen, "#35e0ff", "rgba(53,224,255,.10)", []);
+  if ($("wave-f")) drawWave($("wave-f"), envGen, "#ffb028", null);
+  if ($("run-v")) drawWave($("run-v"), vpGen, "#35e0ff", "rgba(53,224,255,.10)", [0.22, 0.71]);
+  if ($("run-i")) drawWave($("run-i"), ipGen, "#b07cff", null);
+}, 130);
+
+let lastSummaries = [];
+
+async function refreshAll() {
+  try {
+    const [caps, wos, kb] = await Promise.all([
+      api("/api/v1/capabilities"), api("/api/v1/workorders"), api("/api/v1/kb/stats"),
+    ]);
+    $("st-caps").textContent = caps.capabilities.filter(c => c.online).length + "/" + caps.capabilities.length;
+    $("st-wo").textContent = wos.workorders.filter(w => w.status === "DRAFT" || w.status === "OPEN").length;
+    renderCaps(caps.capabilities);
+    renderWorkorders(wos.workorders);
+    for (const [id, v] of [["kb-docs", kb.documents], ["kb-chunks", kb.chunks], ["kb-queries", kb.queries], ["kb-docs2", kb.documents], ["kb-chunks2", kb.chunks], ["kb-queries2", kb.queries]])
+      $(id).textContent = v;
+  } catch (e) { console.error(e); }
+  try {
+    const kbl = await api("/api/v1/kb/list");
+    const card = (c) => `<div class="kbcard"><b>《${esc(c.title)}》</b> ${esc(c.chapter)}<div class="meta">${esc(c.document_id)} · v${esc(c.version)} · P${c.page} · ${esc(c.status)}</div>${esc(c.text)}…</div>`;
+    const html = kbl.chunks.map(card).join("");
+    const refs = $("kb-refs");
+    if (refs) refs.innerHTML = kbl.chunks.slice(0, 2).map(c => `<div class="kbref">《${esc(c.title)}》 ${esc(c.chapter)} P${c.page}</div>`).join("");
+    const cards = $("kb-cards");
+    if (cards) cards.innerHTML = html;
+  } catch (e) { console.error(e); }
+  try {
+    const evs = await api("/api/v1/events?limit=10");
+    lastSummaries = evs.events;
+    $("st-alarms").textContent = evs.events.length;
+    renderEvents(evs.events);
+    renderChief();
+  } catch (e) { console.error(e); }
+}
+
+function renderCaps(list) {
+  const html = list.map(c => `
+    <div class="capcard">
+      <h4>${esc(c.name)} ${c.online ? '<span style="color:var(--ok);font-size:10px">●在线</span>' : '<span style="color:var(--danger);font-size:10px">○离线</span>'}</h4>
+      <div class="cid">${esc(c.capability_id)} v${esc(c.version)}</div>
+      <div class="meta">
+        <span>模式 <span class="mode mode-${esc(c.mode)}">${esc(modeCn(c.mode))}</span></span>
+        <span>领域 ${esc(c.domain)}</span>
+        <span>时延 ${c.avg_latency_ms || "-"}ms</span>
+        <span>调用 ${c.call_count}次</span>
+      </div>
+    </div>`).join("")
+    + `<div class="addcap" title="POST /api/v1/capabilities/register">＋ 添加能力<br><span style="font-size:10px;color:var(--dim)">支持热插拔接入</span></div>`;
+  $("caps-grid").innerHTML = html;
+}
+
+function renderEvents(events) {
+  if (!events.length) return;
+  $("alert-tag").textContent = `最近 ${events.length} 条`;
+  $("alert-body").innerHTML = events.map(ev => {
+    const risk = ev.risk_level || ev.diagnosis?.severity || "UNKNOWN";
+    const wo = ev.workorder_id ? `<b style="color:var(--cyan)">${esc(ev.workorder_id)}</b>` : "—";
+    const anomaly = ev.anomaly_type || ev.diagnosis?.anomaly_type || "-";
+    return `<tr><td>${fmtT(ev.ts)}</td><td>${esc(ev.train_id || "-")}</td><td>${esc(ev.component || "-")}</td>
+      <td>${esc(anomaly)}</td><td><span class="lv lv-${esc(risk)}">${esc(riskCn(risk))}</span></td><td>${wo}</td></tr>`;
+  }).join("");
+}
+
+function renderWorkorders(list) {
+  $("wo-body").innerHTML = list.length ? list.map(w => {
+    const acts = w.status === "DRAFT"
+      ? `<button class="btn mini ok" onclick="woAct('${w.workorder_id}','confirm')">确认</button> <button class="btn mini danger" onclick="woAct('${w.workorder_id}','reject')">驳回</button>`
+      : (w.status === "OPEN" ? `<button class="btn mini" onclick="woAct('${w.workorder_id}','close')">关闭</button>` : "—");
+    return `<tr><td><b style="color:var(--cyan)">${esc(w.workorder_id)}</b></td>
+      <td><span class="mode mode-${w.status === "OPEN" ? "PRIMARY" : w.status === "REJECTED" ? "DISABLED" : "AUXILIARY"}">${esc(w.status)}</span></td>
+      <td>${esc(w.train_id || "-")}</td><td>${esc(w.component || "-")}</td>
+      <td><span class="lv lv-${esc(w.risk?.level)}">${esc(riskCn(w.risk?.level))}</span></td>
+      <td>${esc(w.created_at ? new Date(w.created_at * 1000).toLocaleString("zh-CN") : "-")}</td>
+      <td>${acts}</td></tr>`;
+  }).join("") : `<tr><td colspan="7" style="color:var(--dim)">暂无工单</td></tr>`;
+}
+
+async function woAct(id, action) {
+  try {
+    await api(`/api/v1/workorders/${id}/${action}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ operator: "值班员", note: "" }) });
+    toast(`✅ 工单 ${id} ${action} 成功`);
+    refreshAll();
+  } catch (e) { toast("❌ " + e.message, true); }
+}
+
+function renderChief() {
+  const ev = lastSummaries.find(e => e.summary);
+  if (!ev) return;
+  const s = ev.summary;
+  $("chief-risk").className = "badge lv-" + esc(s.risk?.level || "UNKNOWN");
+  $("chief-risk").textContent = riskCn(s.risk?.level) + (s.risk?.score != null ? ` · ${s.risk.score}` : "");
+  const c = s.specialist_conclusion || {};
+  const reasons = (s.risk?.reasons || []).map(r => `<li>${esc(r)}</li>`).join("");
+  const kbs = (s.knowledge || []).map(k => `<div class="kbref">《${esc(k.title)}》 ${esc(k.chapter)} P${k.page}（${esc(k.document_id)} v${esc(k.version)}）</div>`).join("");
+  const wo = s.workorder ? `<div class="action" style="border-color:var(--line-strong);background:rgba(41,224,255,.06);color:#cfeaff">工单草稿：<b style="color:var(--cyan)">${esc(s.workorder.workorder_id)}</b> · ${esc(s.workorder.status)} · 等待人工确认</div>` : "";
+  const action = c.recommended_action ? `<div class="action">建议行动：${esc(c.recommended_action)}</div>` : "";
+  $("chief-body").innerHTML = `
+    <div class="conclusion">${esc(c.conclusion || "（无结论）")}</div>
+    <ul class="reasons">${reasons}</ul>${kbs}${action}${wo}
+    <div class="cap" style="margin-top:8px">分派：${esc(s.capability?.capability_id || "-")} · 置信度 ${c.confidence ?? "-"} · 人工复核 ${s.human_review_required ? "需要" : "不需要"}</div>`;
+}
+
+async function refreshRunning() {
+  try {
+    const raw = await api("/api/v1/events/raw?anomaly=arc&limit=5");
+    const evs = raw.events;
+    $("arc-tag").textContent = evs.length ? `最近 ${evs.length} 条` : "";
+    $("arc-metrics").innerHTML = evs.length ? (() => {
+      const d = evs[0].diagnosis || {};
+      return `
+        <div class="metric"><b>${d.arc_events ?? "-"}</b><span>检出事件次数</span></div>
+        <div class="metric"><b>${d.arc_total_ms ?? "-"}ms</b><span>累计燃弧时长</span></div>
+        <div class="metric"><b>${d.arc_score ?? "-"}</b><span>电弧风险评分</span></div>
+        <div class="metric"><b>${d.max_hf_ratio ?? "-"}×</b><span>高频能量/基线</span></div>`;
+    })() : `<div class="metric"><b>-</b><span>暂无电弧分析记录</span></div>`;
+  } catch (e) { console.error(e); }
+  try {
+    const raw = await api("/api/v1/events/raw?anomaly=impact&limit=6");
+    const evs = raw.events;
+    $("shm-tag").textContent = evs.length ? `最近 ${evs.length} 条` : "";
+    $("shm-body").innerHTML = evs.length ? evs.map(ev => {
+      const d = ev.diagnosis || {};
+      const imps = d.impacts || [];
+      const p1 = imps[0] ? `(${imps[0].x_mm},${imps[0].y_mm}) / ${imps[0].energy_j}J` : "-";
+      const p2 = imps[1] ? `(${imps[1].x_mm},${imps[1].y_mm}) / ${imps[1].energy_j}J` : "-";
+      return `<tr><td>${fmtT(ev.ts)}</td><td>${esc(ev.asset?.train_id || "-")}</td><td>${esc(ev.asset?.component || "-")}</td>
+        <td>${p1}</td><td>${p2}</td><td>${d.max_energy_j ?? "-"}J</td>
+        <td><span class="lv lv-${esc(d.severity)}">${esc(riskCn(d.severity))}</span></td></tr>`;
+    }).join("") : `<tr><td colspan="7" style="color:var(--dim)">暂无 SHM 事件</td></tr>`;
+  } catch (e) { console.error(e); }
+}
+
+async function refreshLineside() {
+  try {
+    const raw = await api("/api/v1/events/raw?anomaly=track&limit=8");
+    const evs = raw.events;
+    $("fod-metric-count").textContent = evs.length;
+    $("fod-body").innerHTML = evs.length ? evs.map(ev => {
+      const d = ev.diagnosis || {};
+      const dets = d.detections || [];
+      const names = [...new Set(dets.map(x => x.class_name))].join("、") || "-";
+      const maxA = dets.length ? Math.max(...dets.map(x => x.area_ratio || 0)) : 0;
+      return `<tr><td>${fmtT(ev.ts)}</td><td>${esc(ev.asset?.train_id || "-")} / ${esc(ev.asset?.component || "-")}</td>
+        <td>${names}</td><td>${(maxA * 100).toFixed(1)}%</td>
+        <td><span class="lv lv-${esc(d.severity)}">${esc(riskCn(d.severity))}</span></td>
+        <td>${dets.length ? "已存档" : "-"}</td></tr>`;
+    }).join("") : `<tr><td colspan="6" style="color:var(--dim)">暂无检测记录</td></tr>`;
+  } catch (e) { console.error(e); }
+}
+
+async function refreshStation() {
+  try {
+    const raw = await api("/api/v1/events/raw?anomaly=door&limit=8");
+    const evs = raw.events;
+    $("station-body").innerHTML = evs.length ? evs.map(ev => {
+      const d = ev.diagnosis || {};
+      const angles = (d.handles || []).map(h => h.angle_deg + "°").join(" / ") || "-";
+      return `<tr><td>${fmtT(ev.ts)}</td><td>${esc(ev.asset?.train_id || "-")} / ${esc(ev.asset?.component || "-")}</td>
+        <td>${esc(d.anomaly_type || "-")}（${angles}）</td>
+        <td><span class="lv lv-${esc(d.severity)}">${esc(riskCn(d.severity))}</span></td></tr>`;
+    }).join("") : `<tr><td colspan="4" style="color:var(--dim)">暂无快检记录</td></tr>`;
+  } catch (e) { console.error(e); }
+}
+
+async function fireDemo(kind) {
+  $("demo-status").textContent = "诊断链路执行中（LLM 编排）…";
+  try {
+    const summary = await api("/api/v1/events/demo/" + kind, { method: "POST" });
+    const lvl = summary.risk?.level;
+    toast(`✅ ${kind} 完成：风险 <b class="lv lv-${esc(lvl)}">${esc(riskCn(lvl))}</b>` +
+      (summary.workorder ? ` · 工单 ${esc(summary.workorder.workorder_id)}` : ""));
+  } catch (e) { toast("❌ " + kind + " 失败：" + e.message, true); }
+  $("demo-status").textContent = "";
+  refreshAll();
+}
+
+function toggleChat() {
+  const w = $("chat-win");
+  w.classList.toggle("open");
+  if (w.classList.contains("open")) {
+    $("chat-text").focus();
+    fetch("/healthz").then(r => r.json()).then(d => {
+      $("chat-brain").textContent = d.brain === "OpenAICompatibleProvider" ? "LLM 大脑 · 流式" : "本地降级";
+    }).catch(() => {});
+  }
+}
+
+async function sendChat() {
+  const input = $("chat-text");
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = "";
+  const body = $("chat-body");
+  body.insertAdjacentHTML("beforeend", `<div class="msg user">${esc(text)}</div>`);
+  const pendId = "chat-pending-" + Date.now();
+  body.insertAdjacentHTML("beforeend", `<div class="msg bot" id="${pendId}">…</div>`);
+  body.scrollTop = body.scrollHeight;
+  const el = document.getElementById(pendId);
+  let acc = "", tools = [];
+  try {
+    const r = await fetch("/api/v1/chat/stream", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }),
+    });
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop();
+      for (const line of parts) {
+        const data = line.replace(/^data:\s*/, "").trim();
+        if (!data || data === "[DONE]") continue;
+        let piece; try { piece = JSON.parse(data); } catch { continue; }
+        if (piece.type === "delta") { acc += piece.text; el.textContent = acc; body.scrollTop = body.scrollHeight; }
+        else if (piece.type === "tool_start") { tools.push(piece.name + "…"); el.innerHTML = `🛠 ${esc(tools.join(" → "))}<br>…`; body.scrollTop = body.scrollHeight; }
+        else if (piece.type === "tool_end") { tools[tools.length - 1] = piece.name + (piece.ok ? " ✓" : " ✗"); el.innerHTML = `🛠 ${esc(tools.join(" → "))}<br>…`; }
+        else if (piece.type === "done") { acc = piece.reply || acc; tools = (piece.tool_trace || []).map(t => t.name + (t.ok ? " ✓" : " ✗")); }
+      }
+    }
+    el.innerHTML = `${esc(acc)}${tools.length ? `<div class="tools">🛠 ${esc(tools.join(" → "))}</div>` : ""}`;
+    refreshAll();
+  } catch (e) {
+    el.textContent = "❌ 请求失败：" + e.message;
+  }
+  body.scrollTop = body.scrollHeight;
+}
+
+refreshAll();
+setInterval(refreshAll, 8000);
+</script>
+</body>
+</html>
