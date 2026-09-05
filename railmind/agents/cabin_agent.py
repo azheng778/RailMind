@@ -1,7 +1,7 @@
 """Cabin-Agent：车内开放场景巡检领域专业 Agent（方案 5.5）。
 
 输入：车厢巡检 VLM 能力（internal.cabin.patrol_vlm）的统一诊断事件。
-职责：1)核对相邻窗口场景判定与一致性；2)按演示规程执行升级规则
+职责：1)核对相邻窗口场景判定与一致性；2)按处置规程执行升级规则
 （连续两窗口一致才升级，绝不输出"确认暴力事件"等确定性结论）；
 3)检索车内处置知识依据。走 pi 循环（Echo 脚本驱动），确定性分级。
 """
@@ -20,7 +20,7 @@ from railmind.core.tools import ToolRegistry
 
 SYSTEM = (
     "你是高铁车厢巡检专业Agent。输入是车厢巡检VLM能力产生的统一诊断事件。"
-    "你的职责：1)核对该车厢近期巡检窗口记录；2)按方案5.5演示规程执行升级规则："
+    "你的职责：1)核对该车厢近期巡检窗口记录；2)按车内巡检处置规程执行升级规则："
     "连续两个窗口结论一致才升级告警，单窗口异常只观察，低置信度/降级转人工复核，"
     "绝不输出'确认暴力事件'等确定性结论；3)检索车内处置知识依据。"
     "最后必须输出一个JSON对象，字段：conclusion(结论一句话)、severity、confidence、"
@@ -75,7 +75,7 @@ class CabinAgent(SpecialistAgent):
             rows = self.event_store.query(train_id=train_id, anomaly_type="cabin_patrol", since_ts=since)
             return {"train_id": train_id, "recent_windows": len(rows), "window_s": 3600.0}
 
-        @tools.register(name="grade_cabin_scene", description="按方案5.5演示规程执行窗口升级规则")
+        @tools.register(name="grade_cabin_scene", description="按车内巡检处置规程执行窗口升级规则")
         def grade_cabin_scene() -> Dict[str, Any]:
             scenes: List[str] = list(self._session.get("scenes", []))
             consistent = bool(self._session.get("consistent"))
@@ -128,7 +128,7 @@ class CabinAgent(SpecialistAgent):
             conclusion = {
                 "conclusion": (
                     f"车厢巡检 {grade.get('windows', 0)} 个窗口场景判定「{scene_cn}」，"
-                    f"{'连续两窗口结论一致，按演示规程等级 ' + str(grade.get('severity'))}"
+                    f"{'连续两窗口结论一致，按检修规程等级 ' + str(grade.get('severity'))}"
                     if grade.get("consistent") else "相邻窗口结论不一致或存在降级，按方案5.5不升级、转人工复核。"
                 ),
                 "severity": grade.get("severity"),
@@ -142,7 +142,7 @@ class CabinAgent(SpecialistAgent):
             return json.dumps(conclusion, ensure_ascii=False), []
 
         return [
-            ("查询近期巡检窗口记录并按演示规程执行升级规则", [("query_cabin_history", {"train_id": ""}), ("grade_cabin_scene", {})]),
+            ("查询近期巡检窗口记录并按处置规程执行升级规则", [("query_cabin_history", {"train_id": ""}), ("grade_cabin_scene", {})]),
             ("检索车内处置知识依据", [("retrieve_kb", {})]),
             _final,
         ]

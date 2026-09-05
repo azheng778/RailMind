@@ -96,6 +96,19 @@ def build_demo_event(kind: str):
             "note": "弓网电弧在线监测（真实公开数据集）",
         }
 
+    if kind == "fastener_defect":
+        samples = sorted(glob.glob(os.path.join(_REPO, "railmind", "capabilities", "fastener", "samples", "sample_*.jpg")))
+        sample = _pick(samples)
+        if not sample:
+            return None
+        return {
+            "domain": "lineside",
+            "asset": {"train_id": "CRH-07", "carriage_id": "-", "component": "track_k45_plus_fastener"},
+            "operation_context": {"scene": "STATION_STOP", "speed_kmh": 0},
+            "capability_input": {"fastener_image_uri": sample, "evidence_dir": os.path.join(_REPO, "data", "fastener_evidence")},
+            "note": "钢轨扣件缺陷检测（RFDD 数据集 YOLO26n）",
+        }
+
     if kind == "lineside_fod":
         image = _pick([os.path.join(PANTO_SAMPLES, "video_frame_*.jpg")])
         if not image:

@@ -4,7 +4,7 @@
 **Chief-Agent 由远端 LLM 驱动**（DeepSeek V4 Flash Vision Exp，opencode zen，工具调用自主编排），确定性风险引擎与工单闭环由平台保证，
 网络故障自动落回本地脚本（演示稳定性）。前端为按参考图实现的深色大屏 + **运维对话助手**。
 
-## 六个能力（能力中心实时可视）
+## 七个能力（能力中心实时可视）
 
 | 能力 ID | 领域 | 模型/数据 | 指标 |
 | --- | --- | --- | --- |
@@ -13,6 +13,7 @@
 | internal.panto.wear_vlm | pantograph | LLM 视觉评估（strip 检测引导裁剪 → 固定 JSON） | 低置信度自动拒判 |
 | internal.panto.arc_signal | pantograph | 可解释信号链 · Mendeley 电弧数据集（CC BY 4.0） | **19/19 真实电弧记录检出 100%** |
 | internal.lineside.fod | lineside | **YOLO26n** · RailFOD23（4 类异物，CC BY 4.0） | mAP50 0.699（30ep 从零训练） |
+| internal.lineside.fastener | lineside | **YOLO26n** · RFDD 扣件缺陷数据集（6 类，CC BY 4.0） | **mAP50 0.975**（断裂/缺失→HIGH） |
 | internal.cabin.patrol_vlm | cabin | 乘务员巡检视频 → 双窗口各 6 帧 → VLM 多帧固定 JSON（DeepSeek V4 Flash Vision） | 连续两窗口一致性校验；预计算缓存回放 + 实时重分析双模式 |
 
 另有受电弓部件检测层（YOLO26n，contact_point/mast/strip，mAP50 0.768）服务磨耗评估裁剪。
@@ -75,7 +76,7 @@ Chief-Agent（LLM 大脑，自主编排 6 步；Echo 降级兜底 + 闭环保障
 | POST | `/api/v1/capabilities/register` | 外部能力热注册 |
 | POST | `/api/v1/capabilities/{id}/mode` | 模式切换 PRIMARY/STANDBY/AUXILIARY/OBSERVE/DISABLED |
 | POST | `/api/v1/events` | 事件入口 → Chief 全链路 |
-| POST | `/api/v1/events/demo/{kind}` | 一键演示事件（shm_impact/door_normal/door_open/panto_wear/panto_arc/lineside_fod/cabin_patrol/cabin_live） |
+| POST | `/api/v1/events/demo/{kind}` | 一键演示事件（shm_impact/door_normal/door_open/panto_wear/panto_arc/lineside_fod/fastener_defect/cabin_patrol/cabin_live） |
 | POST | `/api/v1/chat` | 运维对话助手（LLM 大脑） |
 | GET/POST | `/api/v1/workorders...` | 工单查询与人工确认/驳回/关闭 |
 

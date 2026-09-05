@@ -153,6 +153,43 @@
   .btn.demo-main { color: #04122b; background: linear-gradient(180deg, #35e0ff, #1d9fd0); border-color: #7fe9ff; font-weight: 700; box-shadow: 0 0 14px rgba(41,224,255,.4); }
   body.demo-on header { box-shadow: 0 0 24px rgba(41,224,255,.22) inset; }
   body.demo-on .panel::before { opacity: 1; }
+  /* 大屏增强：运营线路 / 速度仪表 / 媒体墙 / 紧凑能力卡 */
+  .route-panel { margin-bottom: 12px; }
+  .route-line { position: relative; height: 56px; margin: 6px 8px 2px; }
+  .route-track { position: absolute; top: 26px; left: 0; right: 0; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, rgba(41,224,255,.15), rgba(41,224,255,.55), rgba(41,224,255,.15)); }
+  .route-done { position: absolute; top: 26px; left: 0; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, var(--cyan), #7fe9ff); box-shadow: 0 0 10px var(--cyan); transition: width 1s linear; }
+  .route-station { position: absolute; top: 20px; transform: translateX(-50%); text-align: center; width: 90px; }
+  .route-station i { display: block; width: 10px; height: 10px; margin: 0 auto 3px; border-radius: 50%;
+    background: #0b1e3e; border: 2px solid #4f7fbf; }
+  .route-station.passed i { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  .route-station span { font-size: 10px; color: var(--dim); white-space: nowrap; }
+  .route-station.passed span { color: #bfe6ff; }
+  #route-marker { position: absolute; top: 14px; transform: translateX(-50%); transition: left 1s linear; z-index: 2; text-align: center; }
+  #route-marker .train-icon { font-size: 20px; filter: drop-shadow(0 0 8px rgba(41,224,255,.8)); }
+  .route-meta { display: flex; gap: 18px; align-items: center; font-size: 11.5px; color: var(--dim); padding: 2px 10px 6px; flex-wrap: wrap; }
+  .route-meta b { color: var(--cyan); }
+  .media-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .media-grid figure { margin: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #06122a; }
+  .media-grid img, .media-grid video { width: 100%; height: 74px; object-fit: cover; display: block; }
+  .media-grid figcaption { font-size: 10px; color: var(--dim); padding: 4px 7px; border-top: 1px solid rgba(64,156,255,.15); }
+  .media-grid .live-chip { position: absolute; top: 4px; left: 4px; font-size: 9px; color: #ff8b96;
+    background: rgba(4,12,28,.8); border: 1px solid rgba(255,77,94,.5); border-radius: 3px; padding: 0 5px; }
+  .media-grid figure { position: relative; }
+  .caps.sm { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 6px; }
+  .caps.sm .capcard { padding: 7px 9px; font-size: 10.5px; }
+  .caps.sm .capcard h4 { font-size: 11.5px; margin-bottom: 2px; }
+  .caps.sm .capcard .cid { margin-bottom: 4px; font-size: 9.5px; }
+  .caps.sm .capcard .meta { gap: 7px; font-size: 9.5px; }
+  .caps.sm .addcap { min-height: 70px; font-size: 11px; }
+  @keyframes pulse-dot { 0%,100% { box-shadow: 0 0 6px var(--ok); } 50% { box-shadow: 0 0 14px var(--ok); } }
+  .stat.ok .dot-live { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: pulse-dot 2s infinite; margin-right: 5px; }
+  #gauge-speed { display: block; margin: 0 auto; }
+  .gauge-wrap { text-align: center; position: relative; }
+  .gauge-wrap .kmh { position: absolute; left: 0; right: 0; bottom: 14px; }
+  .gauge-wrap .kmh b { font-size: 26px; color: #eaf6ff; text-shadow: 0 0 14px rgba(63,155,255,.8); }
+  .gauge-wrap .kmh span { font-size: 10.5px; color: var(--dim); display: block; }
 </style>
 </head>
 <body>
@@ -203,14 +240,39 @@
         <button class="btn" onclick="fireDemo('panto_wear')">受电弓磨耗评估</button>
         <button class="btn" onclick="fireDemo('panto_arc')">受电弓电弧（真实数据）</button>
         <button class="btn" onclick="fireDemo('lineside_fod')">轨道异物检测</button>
+        <button class="btn" onclick="fireDemo('fastener_defect')">扣件缺陷检测</button>
         <button class="btn" onclick="fireDemo('cabin_patrol')">车内巡检（VLM）</button>
         <button class="btn demo-main" onclick="startDemo()">▶ 一键演示 · 评委模式</button>
         <button class="btn danger" id="demo-stop" style="display:none" onclick="endDemo(false)">■ 结束演示</button>
         <span class="spin" id="demo-status"></span>
       </div>
 
+      <div class="panel route-panel">
+        <h3>京沪高铁运营线路 <span class="tag" id="route-tag">G1 · 北京南 → 上海虹桥 · 全程 1318 km</span></h3>
+        <div class="route-line">
+          <div class="route-track"></div>
+          <div class="route-done" id="route-done" style="width:0%"></div>
+          <div id="route-marker" style="left:0%"><div class="train-icon">🚄</div></div>
+        </div>
+        <div class="route-meta">
+          <span>当前时速 <b id="route-speed">301</b> km/h</span>
+          <span>累计里程 <b id="route-mileage">2876.0</b> km</span>
+          <span>下一站 <b id="route-next">南京南</b> · 到达约 <b id="route-eta">-</b></span>
+          <span>状态 <b id="route-state">运行中</b></span>
+          <span>今日已检测 <b id="route-count">-</b> 项诊断任务</span>
+        </div>
+      </div>
+
       <div class="grid g-main">
         <div>
+          <div class="panel mb">
+            <h3>运行状态仪表 <span class="tag"><span class="dot"></span>实时遥测</span></h3>
+            <div class="gauge-wrap">
+              <canvas id="gauge-speed" width="260" height="132"></canvas>
+              <div class="kmh"><b id="gauge-kmh">301</b><span>km/h · <span id="gauge-state">运行中</span></span></div>
+            </div>
+            <div class="cap" style="text-align:center">列控数据经安全网关单向接入，仅监测不控制（方案 1.1 边界）</div>
+          </div>
           <div class="panel mb">
             <h3>受电弓电压 / 电弧监测 <span class="tag"><span class="dot"></span>实时采样 50kHz</span></h3>
             <canvas class="wave" id="wave-v"></canvas>
@@ -246,12 +308,13 @@
               </svg>
             </div>
             <div class="cap" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center">
-              <span>① 车顶受电弓</span><span>② 走行部/传动</span><span>③ 车底包覆</span><span>④ 车轮表面</span><span>⑤ 车内场景</span>
+              <span>① 车顶受电弓</span><span>② 走行部/传动</span><span>③ 车底包覆</span><span>④ 车轮/扣件</span><span>⑤ 车内场景</span>
             </div>
-            <div class="thumbs">
-              <figure class="thumb"><img src="/static/door_demo/demo_clean.jpg" alt="检查门"><p>③ 车底检查门·把手角度</p></figure>
-              <figure class="thumb"><img src="/static/panto_samples/video_frame_0242.jpg" alt="受电弓"><p>① 受电弓·磨耗/电弧</p></figure>
-              <figure class="thumb"><img src="/static/door_demo/det_frame_01017.jpg" alt="结果"><p>③ 检测结果·把手85°异常</p></figure>
+            <div class="media-grid">
+              <figure><img src="/static/panto_samples/video_frame_0242.jpg" alt="受电弓"><figcaption>① 受电弓 · 磨耗/电弧监测</figcaption></figure>
+              <figure><img src="/static/door_demo/det_frame_01017.jpg" alt="检查门"><figcaption>③ 车底检查门 · 把手角度</figcaption></figure>
+              <figure><img src="/static/fastener_demo/samples/sample_broken.jpg" alt="扣件"><figcaption>④ 钢轨扣件 · 缺陷检测</figcaption></figure>
+              <figure><video src="/static/web/assets/cabin_patrol.mp4" muted loop autoplay playsinline></video><span class="live-chip">LIVE</span><figcaption>⑤ 车内巡检 · 乘务员视角</figcaption></figure>
             </div>
           </div>
           <div class="panel">
@@ -285,8 +348,14 @@
 
       <div class="grid g-mid">
         <div class="panel">
-          <h3>开放能力中心 <span class="tag">热插拔能力 · 按需接入与编排</span></h3>
-          <div class="caps" id="caps-grid"></div>
+          <h3>平台运行统计 <span class="tag">滚动累计</span></h3>
+          <div class="metric-grid">
+            <div class="metric"><b id="m-ev-total">-</b><span>累计诊断事件</span></div>
+            <div class="metric"><b id="m-wo-close">-</b><span>工单闭环率</span></div>
+            <div class="metric"><b id="m-wo-open">-</b><span>待处置工单</span></div>
+            <div class="metric"><b id="m-kb-queries">-</b><span>知识检索次数</span></div>
+          </div>
+          <div class="cap" style="margin-top:8px">统计来自平台事件/工单存储，随诊断实时累计；每条结论均可追溯：数据来源 · 模型版本 · 置信度 · 知识引用 · 人工确认记录。</div>
         </div>
         <div class="panel">
           <h3>进站停靠快检 <span class="tag"><span class="dot"></span>静态快检中</span></h3>
@@ -296,6 +365,12 @@
           </div>
           <div class="cap" style="margin-top:8px">把手角度判据：≤50° 正常 · 50–75° 警告 · &gt;75° 异常；盖板边缘密度 &gt;3900 判包覆板异常；信息不全自动拒判转人工复核。</div>
         </div>
+      </div>
+
+      <div class="panel" style="margin-top:12px">
+        <h3>开放能力中心 <span class="tag">热插拔能力 · 按需接入与编排</span></h3>
+        <div class="caps sm" id="caps-grid"></div>
+        <div class="cap" style="margin-top:8px">外部能力以 REST 独立服务热注册（POST /api/v1/capabilities/register），平台不重启、Chief 主代码不改即可发现并调用；能力详情与模式管理见「能力中心」页。</div>
       </div>
     </div>
 
@@ -431,6 +506,13 @@
         <table>
           <thead><tr><th>时间</th><th>车辆/区段</th><th>异物</th><th>面积占比</th><th>风险</th><th>证据</th></tr></thead>
           <tbody id="fod-body"><tr><td colspan="6" style="color:var(--dim)">暂无检测记录，触发「轨道异物检测」后显示</td></tr></tbody>
+        </table>
+      </div>
+      <div class="panel" style="margin-top:12px">
+        <h3>扣件缺陷检测明细 <span class="tag" id="fastener-tag">RFDD 数据集 · YOLO26n</span></h3>
+        <table>
+          <thead><tr><th>时间</th><th>车辆/区段</th><th>缺陷类型</th><th>数量</th><th>风险</th><th>证据</th></tr></thead>
+          <tbody id="fastener-body"><tr><td colspan="6" style="color:var(--dim)">暂无检测记录，触发「扣件缺陷检测」后显示</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -585,6 +667,16 @@ async function refreshAll() {
     renderWorkorders(wos.workorders);
     for (const [id, v] of [["kb-docs", kb.documents], ["kb-chunks", kb.chunks], ["kb-queries", kb.queries], ["kb-docs2", kb.documents], ["kb-chunks2", kb.chunks], ["kb-queries2", kb.queries]])
       $(id).textContent = v;
+    try {
+      const evAll = await api("/api/v1/events/raw?limit=500");
+      const closed = wos.workorders.filter(w => w.status === "CLOSED").length;
+      const open = wos.workorders.filter(w => w.status === "DRAFT" || w.status === "OPEN").length;
+      if ($("m-ev-total")) $("m-ev-total").textContent = evAll.events.length;
+      if ($("route-count")) $("route-count").textContent = evAll.events.length;
+      if ($("m-wo-close")) $("m-wo-close").textContent = Math.round(closed / Math.max(1, wos.workorders.length) * 100) + "%";
+      if ($("m-wo-open")) $("m-wo-open").textContent = open;
+      if ($("m-kb-queries")) $("m-kb-queries").textContent = kb.queries;
+    } catch (e) {}
   } catch (e) { console.error(e); }
   try {
     const kbl = await api("/api/v1/kb/list");
@@ -717,6 +809,19 @@ async function refreshLineside() {
         <td>${dets.length ? "已存档" : "-"}</td></tr>`;
     }).join("") : `<tr><td colspan="6" style="color:var(--dim)">暂无检测记录</td></tr>`;
   } catch (e) { console.error(e); }
+  try {
+    const raw = await api("/api/v1/events/raw?anomaly=fastener&limit=8");
+    const evs = raw.events;
+    $("fastener-body").innerHTML = evs.length ? evs.map(ev => {
+      const d = ev.diagnosis || {};
+      const dets = d.detections || [];
+      const names = [...new Set(dets.map(x => x.class_name))].join("、") || "-";
+      return `<tr><td>${fmtT(ev.ts)}</td><td>${esc(ev.asset?.train_id || "-")} / ${esc(ev.asset?.component || "-")}</td>
+        <td>${names}</td><td>${dets.length}</td>
+        <td><span class="lv lv-${esc(d.severity)}">${esc(riskCn(d.severity))}</span></td>
+        <td>${dets.length ? "已存档" : "-"}</td></tr>`;
+    }).join("") : `<tr><td colspan="6" style="color:var(--dim)">暂无检测记录</td></tr>`;
+  } catch (e) { console.error(e); }
 }
 
 async function refreshStation() {
@@ -803,14 +908,70 @@ async function sendChat() {
 // ---------- 全局活数据（实时模拟层：车辆状态 / 传动健康度） ----------
 let demoActive = false, autoNav = false, demoNavCancelled = false;
 const train = { speed: 301, target: 301, mileage: 2876.0 };
+// ---------- 运营线路 + 速度仪表（实时模拟层） ----------
+const ROUTE = [
+  { name: "北京南", km: 0 }, { name: "廊坊", km: 59 }, { name: "天津南", km: 122 },
+  { name: "沧州西", km: 219 }, { name: "济南西", km: 362 }, { name: "徐州东", km: 692 },
+  { name: "南京南", km: 1024 }, { name: "上海虹桥", km: 1318 },
+];
+const ROUTE_LEN = 1318;
+function buildRoute() {
+  const line = document.querySelector(".route-line");
+  if (!line) return;
+  ROUTE.forEach(st => {
+    const el = document.createElement("div");
+    el.className = "route-station"; el.dataset.km = st.km; el.dataset.name = st.name;
+    el.style.left = (st.km / ROUTE_LEN * 100) + "%";
+    el.innerHTML = `<i></i><span>${st.name}</span>`;
+    line.appendChild(el);
+  });
+}
+buildRoute();
+function updateRoute() {
+  const pos = train.mileage % ROUTE_LEN;
+  const pct = pos / ROUTE_LEN * 100;
+  const done = $("route-done"); if (done) done.style.width = pct + "%";
+  const marker = $("route-marker"); if (marker) marker.style.left = pct + "%";
+  let next = ROUTE.find(st => st.km > pos + 1) || ROUTE[ROUTE.length - 1];
+  document.querySelectorAll(".route-station").forEach(el => {
+    el.classList.toggle("passed", parseFloat(el.dataset.km) <= pos + 1);
+  });
+  const nx = $("route-next");
+  if (nx) nx.textContent = train.target === 0 ? `${next.name}（停站中）` : next.name;
+  const eta = $("route-eta");
+  if (eta) eta.textContent = Math.max(0, Math.round((next.km - pos) / Math.max(60, train.speed) * 60)) + " 分钟";
+  document.querySelectorAll(".route-station.passed").forEach(el => { if (el.dataset.km < pos - 1) {} });
+}
+function drawGauge() {
+  const c = $("gauge-speed"); if (!c) return;
+  const ctx = c.getContext("2d"); const W = c.width, H = c.height;
+  const cx = W / 2, cy = H - 16, R = Math.min(W / 2, H) - 10;
+  ctx.clearRect(0, 0, W, H);
+  const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25, VMAX = 350;
+  [[0, 250, "#35e08e"], [250, 310, "#29e0ff"], [310, 350, "#ffb028"]].forEach(([lo, hi, col]) => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, a0 + (a1 - a0) * lo / VMAX, a0 + (a1 - a0) * hi / VMAX);
+    ctx.strokeStyle = col; ctx.lineWidth = 8; ctx.stroke();
+  });
+  const a = a0 + (a1 - a0) * Math.min(VMAX, train.speed) / VMAX;
+  ctx.beginPath(); ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(a) * (R - 16), cy + Math.sin(a) * (R - 16));
+  ctx.strokeStyle = "#eaf6ff"; ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fillStyle = "#7fe9ff"; ctx.fill();
+}
 setInterval(() => {
   train.speed += (train.target - train.speed) * 0.12 + (Math.random() - 0.5) * (train.target > 0 ? 1.6 : 0);
   train.speed = Math.max(0, Math.min(310, train.speed));
-  train.mileage += train.speed / 3.6 / 1000;
+  if (train.target > 0) train.mileage += train.speed / 3.6 / 1000;
   const sp = String(Math.round(train.speed)), ml = train.mileage.toFixed(1);
   const ns = $("nav-speed"); if (ns) ns.textContent = sp;
   const nm = $("nav-mileage"); if (nm) nm.textContent = ml;
+  const rs = $("route-speed"); if (rs) rs.textContent = sp;
+  const rm = $("route-mileage"); if (rm) rm.textContent = ml;
+  const gk = $("gauge-kmh"); if (gk) gk.textContent = sp;
+  updateRoute(); drawGauge();
 }, 1000);
+drawGauge(); updateRoute();
 // 传动系统健康度小幅漂移（模拟在投数据，两个页面同步）
 setInterval(() => {
   const drift = (min, max) => Math.max(min, Math.min(max, Math.round((min + max) / 2 + (Math.random() - 0.5) * 4)));
@@ -880,9 +1041,10 @@ const DEMO_STEPS = [
   { t: 24500, fn: () => { navToSec("station"); trainStop("南京南"); $("demo-status").textContent = "演示进行中 · ④ 进站停靠快检"; toast("列车进站停靠（南京南）· 车底检查门快检"); } },
   { t: 26500, fn: () => { fireDemo("door_open"); } },
   { t: 34000, fn: () => { trainResume(); fireDemo("panto_wear"); } },
-  { t: 39000, fn: () => { navToSec("lineside"); $("demo-status").textContent = "演示进行中 · ⑤ 轨道异物检测"; fireDemo("lineside_fod"); } },
-  { t: 46000, fn: () => { navToSec("overview"); $("demo-status").textContent = "演示进行中 · 收尾"; } },
-  { t: 48000, fn: () => { endDemo(true); } },
+  { t: 39000, fn: () => { navToSec("lineside"); $("demo-status").textContent = "演示进行中 · ⑤ 线路侧检测"; fireDemo("lineside_fod"); } },
+  { t: 43500, fn: () => { fireDemo("fastener_defect"); } },
+  { t: 51000, fn: () => { navToSec("overview"); $("demo-status").textContent = "演示进行中 · 收尾"; } },
+  { t: 53000, fn: () => { endDemo(true); } },
 ];
 function startDemo() {
   demoTimers.forEach(clearTimeout);
@@ -892,7 +1054,7 @@ function startDemo() {
   $("demo-stop").style.display = "";
   trainResume();
   DEMO_STEPS.forEach(s => { if (s.fn) demoTimers.push(setTimeout(s.fn, s.t)); });
-  toast("演示共 6 项能力 · 全部走真实后端编排 · 约 48s");
+  toast("演示共 7 项能力 · 全部走真实后端编排 · 约 53s");
 }
 function endDemo(finished) {
   demoTimers.forEach(clearTimeout);
@@ -901,7 +1063,7 @@ function endDemo(finished) {
   $("demo-stop").style.display = "none";
   $("demo-status").textContent = finished ? "演示完成 ✅" : "";
   trainResume();
-  if (finished) toast("✅ 演示完成：6 项能力全部在线 · 事件经 Chief-Agent 编排 · 工单可在工单中心人工确认闭环");
+  if (finished) toast("✅ 演示完成：7 项能力全部在线 · 事件经 Chief-Agent 编排 · 工单可在工单中心人工确认闭环");
 }
 function navToSec(sec) {
   if (demoActive && demoNavCancelled) return;
@@ -914,11 +1076,15 @@ function trainStop(stationName) {
   train.target = 0;
   const st = $("nav-state"); if (st) st.textContent = "进站停靠";
   const nx = $("nav-next"); if (nx) nx.textContent = stationName + "（停站中）";
+  const rs = $("route-state"); if (rs) rs.textContent = "进站停靠";
+  const gs = $("gauge-state"); if (gs) gs.textContent = "进站停靠";
 }
 function trainResume() {
   train.target = 301;
   const st = $("nav-state"); if (st) st.textContent = "运行中";
   const nx = $("nav-next"); if (nx) nx.textContent = "南京南";
+  const rs = $("route-state"); if (rs) rs.textContent = "运行中";
+  const gs = $("gauge-state"); if (gs) gs.textContent = "运行中";
 }
 
 refreshAll();

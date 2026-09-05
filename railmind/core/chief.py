@@ -13,6 +13,7 @@ Provider 故障或 LLM 未走完编排时，自动落回 Echo 脚本重跑（演
 from __future__ import annotations
 
 import json
+import threading
 import time
 from typing import Any, Dict, List, Optional
 
@@ -109,6 +110,7 @@ class ChiefAgent:
         self.event_store = event_store
         self.specialists = specialists  # domain -> SpecialistAgent
         self.trace: List[AgentEvent] = []
+        self._event_lock = threading.Lock()  # 编排会话为共享单例，跨线程串行化（自检线程/API 并发）
 
         def listener(event: AgentEvent) -> None:
             self.trace.append(event)
@@ -133,7 +135,10 @@ class ChiefAgent:
             domain = self._session["domain"]
             scene = self._session["scene"]
             self.registry.sweep_offline()
-            target = self.registry.dispatch_target(domain=domain, scene=scene)
+            # 按事件输入名精确匹配能力（同领域多能力时，如 lineside 的异物/扣件）
+            payload = self._session.get("capability_input") or {}
+            input_name = next((k for k in payload if k not in ("asset", "operation_context")), None)
+            target = self.registry.dispatch_target(domain=domain, scene=scene, input_name=input_name)
             if target is None:
                 self._session["capability"] = None
                 return {"found": False}
@@ -236,6 +241,10 @@ class ChiefAgent:
     # ---------- 对外入口 ----------
 
     def handle_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
+        with self._event_lock:
+            return self._handle_event_locked(event)
+
+    def _handle_event_locked(self, event: Dict[str, Any]) -> Dict[str, Any]:
         self.trace = []
         event = dict(event)
         event.setdefault("event_id", f"EVT-{time.strftime('%Y%m%d')}-{int(time.time() * 1000) % 100000:05d}")

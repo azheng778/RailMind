@@ -36,6 +36,8 @@ def create_app(platform: Optional[RailMindPlatform] = None) -> FastAPI:
         ("panto_samples", os.path.join(_REPO, "datasets", "pantograph", "samples")),
         ("door_evidence", os.path.join(_REPO, "data", "door_evidence")),
         ("fod_evidence", os.path.join(_REPO, "data", "fod_evidence")),
+        ("fastener_evidence", os.path.join(_REPO, "data", "fastener_evidence")),
+        ("fastener_demo", os.path.join(_REPO, "railmind", "capabilities", "fastener")),
         ("door_demo", os.path.join(_REPO, "railmind", "capabilities", "door_handle")),
         ("cabin_vlm", os.path.join(_REPO, "railmind", "capabilities", "cabin_vlm")),
     ):

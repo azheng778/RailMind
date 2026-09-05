@@ -36,6 +36,7 @@ class CapabilityInstance:
     capability_type: str
     supported_scenes: List[str]
     input_types: List[str]
+    input_names: List[str]
     descriptor: Dict[str, Any]
     mode: str = MODE_AUXILIARY
     online: bool = True
@@ -106,6 +107,7 @@ class CapabilityRegistry:
                 capability_type=descriptor.get("capability_type", "inference_tool"),
                 supported_scenes=list(descriptor["supported_scenes"]),
                 input_types=[i.get("type", "any") for i in descriptor.get("inputs", [])],
+                input_names=[i.get("name", "") for i in descriptor.get("inputs", [])],
                 descriptor=dict(descriptor),
                 mode=mode,
                 last_heartbeat=self._clock(),
@@ -165,10 +167,11 @@ class CapabilityRegistry:
         domain: Optional[str] = None,
         scene: Optional[str] = None,
         input_type: Optional[str] = None,
+        input_name: Optional[str] = None,
         online_only: bool = True,
         include_observe: bool = False,
     ) -> List[CapabilityInstance]:
-        """按领域/场景/输入类型筛出可分派能力，主用 > 备用 > 辅助，再按时延与错误率。"""
+        """按领域/场景/输入类型/输入名筛出可分派能力，主用 > 备用 > 辅助，再按时延与错误率。"""
         picked: List[CapabilityInstance] = []
         with self._lock:
             for inst in self._instances.values():
@@ -182,6 +185,8 @@ class CapabilityRegistry:
                     continue
                 if input_type and input_type not in inst.input_types and "any" not in inst.input_types:
                     continue
+                if input_name and inst.input_names and input_name not in inst.input_names:
+                    continue
                 picked.append(inst)
         picked.sort(key=lambda i: (_MODE_RANK.get(i.mode, 9), i.error_rate, i.avg_latency_ms))
         return picked
@@ -191,9 +196,10 @@ class CapabilityRegistry:
         domain: str,
         scene: Optional[str] = None,
         input_type: Optional[str] = None,
+        input_name: Optional[str] = None,
     ) -> Optional[CapabilityInstance]:
         """选主用；无主用在线时由备用接管（方案 6.4 / 11.2 主备切换）。"""
-        candidates = self.query(domain=domain, scene=scene, input_type=input_type)
+        candidates = self.query(domain=domain, scene=scene, input_type=input_type, input_name=input_name)
         primaries = [c for c in candidates if c.mode == MODE_PRIMARY]
         if primaries:
             return primaries[0]

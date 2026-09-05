@@ -12,6 +12,8 @@ class EventStore:
     def __init__(self, path: Optional[str] = None):
         self._lock = threading.RLock()
         self.path = path
+        # 摘要与原始事件同样落盘（审计/可追溯）：重启后告警表与对话助手仍能看到完整历史
+        self._summary_path = os.path.splitext(path)[0] + "_summaries.jsonl" if path else None
         self._events: List[Dict[str, Any]] = []
         self._summaries: List[Dict[str, Any]] = []
         if path and os.path.exists(path):
@@ -20,6 +22,12 @@ class EventStore:
                     line = line.strip()
                     if line:
                         self._events.append(json.loads(line))
+        if self._summary_path and os.path.exists(self._summary_path):
+            with open(self._summary_path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if line:
+                        self._summaries.append(json.loads(line))
 
     def append(self, event: Dict[str, Any]) -> None:
         with self._lock:
@@ -33,9 +41,13 @@ class EventStore:
                 fh.write(json.dumps(event, ensure_ascii=False, default=str) + "\n")
 
     def append_summary(self, summary: Dict[str, Any]) -> None:
-        """Chief 处理摘要（含风险等级/工单号/知识引用），供告警表与决策面板使用。"""
+        """Chief 处理摘要（含风险等级/工单号/知识引用），供告警表与决策面板使用。落盘持久化。"""
         with self._lock:
             self._summaries.append(summary)
+            if self._summary_path:
+                os.makedirs(os.path.dirname(self._summary_path) or ".", exist_ok=True)
+                with open(self._summary_path, "a", encoding="utf-8") as fh:
+                    fh.write(json.dumps(summary, ensure_ascii=False, default=str) + "\n")
 
     def list_summaries(self, limit: int = 20) -> List[Dict[str, Any]]:
         with self._lock:

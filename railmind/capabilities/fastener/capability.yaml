@@ -1,0 +1,38 @@
+schema_version: "1.0"
+capability_id: internal.lineside.fastener
+name: 钢轨扣件缺陷检测
+provider: RailMind-Team
+version: 1.0.0
+
+capability_type: inference_tool
+domain: lineside
+
+supported_scenes:
+  - STATION_STOP
+  - LOW_SPEED_PASS
+
+inputs:
+  - name: fastener_image_uri   # 扣件检测相机图片路径（与异物检测能力按输入名区分分派）
+    type: image
+
+outputs:
+  - anomaly_type
+  - severity
+  - confidence
+  - detections
+
+invoke:
+  protocol: PYTHON
+  endpoint: railmind.capabilities.fastener.adapter:infer
+  timeout_ms: 10000
+
+requires_human_review: true
+
+model_card:
+  architecture: YOLO26n（imgsz 640，RFDD 扣件缺陷数据集训练）
+  source: Railway Fastener Defect Dataset（RFDD），Science Data Bank 2025，CSTR:149.11.sciencedb.msdc.00071（CC BY 4.0）
+  classes: [弹条变形, 弹条断裂, 弹条缺失, 弹条翻转, 正常扣件, 弹条移位]
+  limitations:
+    - 断裂/缺失判 HIGH（扣压功能失效），移位/翻转/变形判 WARNING
+    - 演示级精度（30ep），不替代工务专业探伤
+    - 公开/模拟数据验证不等同于真实高速动车上线认证

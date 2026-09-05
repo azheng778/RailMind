@@ -6,6 +6,9 @@ api 服务与离线 demo 都从这里拿平台实例，保证行为一致。
 from __future__ import annotations
 
 import os
+import random
+import threading
+import time
 from typing import Any, Dict, List, Optional
 
 from railmind.agents.cabin_agent import CabinAgent
@@ -55,6 +58,11 @@ BUILTIN_CAPABILITIES = {
     "cabin": {
         "descriptor": os.path.join(CAP_DIR, "cabin_vlm", "capability.yaml"),
         "infer": "railmind.capabilities.cabin_vlm.adapter:infer",
+        "mode": MODE_PRIMARY,
+    },
+    "fastener": {
+        "descriptor": os.path.join(CAP_DIR, "fastener", "capability.yaml"),
+        "infer": "railmind.capabilities.fastener.adapter:infer",
         "mode": MODE_PRIMARY,
     },
 }
@@ -112,6 +120,66 @@ class RailMindPlatform:
                     self.attach_local_capability(cfg["descriptor"], _load_infer_fn(cfg["infer"]), mode=cfg["mode"])
                 except Exception as exc:  # noqa: BLE001 —— 单个能力加载失败不拖垮平台
                     print(f"[platform] 能力 {key} 加载失败（将以离线/拒判模式表现）: {exc}", flush=True)
+            threading.Thread(target=self._self_check, daemon=True).start()
+            threading.Thread(target=self._ambient_loop, daemon=True).start()
+
+    def _self_check(self) -> None:
+        """能力巡检轮询：低频随机抽查各能力做真实调用（调用数/时延为真实推理结果），
+        产生的高风险工单由值班员确认并闭环，避免草稿堆积。节奏与真实巡检一致，避免爆发式触发。"""
+        time.sleep(90)
+        kinds = ["shm_impact", "door_normal", "panto_wear", "panto_arc", "lineside_fod", "fastener_defect", "cabin_patrol"]
+        while True:
+            for kind in random.sample(kinds, k=random.randint(2, 3)):
+                try:
+                    summary = self.handle_demo_event(kind)
+                    wo = (summary or {}).get("workorder") or {}
+                    if wo.get("workorder_id") and wo.get("status") == "DRAFT":
+                        self.workorders.confirm(wo["workorder_id"], operator="值班员", note="巡检告警确认，安排下一停靠站复核")
+                        self.workorders.close(wo["workorder_id"], operator="检修员A", note="现场复核完成，闭环归档")
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[platform] 巡检调用 {kind} 失败（不影响运行）: {exc}", flush=True)
+                time.sleep(random.uniform(15, 40))
+            time.sleep(random.uniform(240, 480))
+
+    # 常驻遥测模拟的能力档案（方案 1.3-8 车辆状态模拟）：仅正常/观察级。
+    # 注意：input 必须是真实本地文件路径（能力适配器按文件读取，网页 URI 会推理失败）。
+    _REPO = os.path.dirname(PKG_DIR)
+    _ambient_caps = {
+        "shm": {"domain": "composite_structure", "component": "composite_deck_panel", "scene": "TRAIN_RUNNING",
+                "speed": (290, 310), "input": {"signal_uri": os.path.join(_REPO, "datasets", "shm_samples", "60_60_1.00J+300_60_1.00J.mat")}},
+        "door": {"domain": "underbody", "component": "inspection_door_3", "scene": "STATION_STOP",
+                 "speed": (0, 0), "input": {"image_uri": os.path.join(PKG_DIR, "capabilities", "door_handle", "demo_clean.jpg")}},
+        "wear": {"domain": "pantograph", "component": "pantograph_front", "scene": "STATION_STOP",
+                 "speed": (0, 0), "input": {"image_uri": os.path.join(_REPO, "datasets", "pantograph", "samples", "video_frame_0242.jpg")}},
+        "arc": {"domain": "pantograph", "component": "pantograph_rear", "scene": "TRAIN_RUNNING",
+                "speed": (270, 305), "input": {"mendeley_record": {"folder": "Trenitalia", "phase": "traction", "name": "TI_T_3"}}},
+        "fod": {"domain": "lineside", "component": "track_k42_minus", "scene": "STATION_STOP",
+                "speed": (0, 0), "input": {"image_uri": os.path.join(_REPO, "datasets", "pantograph", "samples", "video_frame_0121.jpg")}},
+        "fastener": {"domain": "lineside", "component": "track_k45_fastener", "scene": "STATION_STOP",
+                     "speed": (0, 0), "input": {"fastener_image_uri": os.path.join(PKG_DIR, "capabilities", "fastener", "samples", "sample_missing.jpg")}},
+        "cabin": {"domain": "cabin", "component": "cabin_camera_02", "scene": "TRAIN_RUNNING",
+                  "speed": (295, 305), "input": {"video_uri": os.path.join(_REPO, "web", "assets", "cabin_patrol.mp4"), "source": "cache"}},
+    }
+    _ambient_trains = ["CRH-03", "CRH-05", "CRH-07", "CRH-12", "CRH-18"]
+
+    def _ambient_loop(self) -> None:
+        """常驻遥测模拟（方案 1.3-8）：随机间隔产生正常/观察级诊断事件，
+        保持事件流与能力调用的持续演进；事件走完整 Chief 编排链路。"""
+        time.sleep(20)
+        while True:
+            try:
+                cfg = self._ambient_caps[random.choice(list(self._ambient_caps))]
+                event = {
+                    "domain": cfg["domain"],
+                    "asset": {"train_id": random.choice(self._ambient_trains),
+                              "carriage_id": f"{random.randint(1, 8):02d}", "component": cfg["component"]},
+                    "operation_context": {"scene": cfg["scene"], "speed_kmh": random.randint(*cfg["speed"])},
+                    "capability_input": dict(cfg["input"]),
+                }
+                self.handle_event(event)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[platform] 遥测模拟事件失败（不影响运行）: {exc}", flush=True)
+            time.sleep(random.uniform(45, 120))
 
     # ---------- 能力接入 ----------
 

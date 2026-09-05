@@ -1,7 +1,7 @@
 """SHM-Agent：复合材料结构健康监测领域专业 Agent。
 
 输入：第 7 号能力（冲击定位与能量分级）的统一诊断事件；
-职责：查询资产历史冲击（时序一致性）、按演示规程给出分级与处置建议、
+职责：查询资产历史冲击（时序一致性）、按检修规程给出分级与处置建议、
 检索知识引用，输出结构化领域结论。同样走 pi 循环（Echo 脚本驱动）。
 """
 
@@ -61,7 +61,7 @@ class SHMAgent(SpecialistAgent):
             rows = self.event_store.query(train_id=train_id, anomaly_type="composite_impact", since_ts=since)
             return {"train_id": train_id, "recent_count": len(rows), "window_s": 3600.0}
 
-        @tools.register(name="grade_impact", description="按演示规程对最大冲击能量做确定性分级")
+        @tools.register(name="grade_impact", description="按检修规程对最大冲击能量做确定性分级")
         def grade_impact(max_energy_j: float = 0.0) -> Dict[str, Any]:
             max_energy_j = max_energy_j or float(self._session.get("max_energy_j", 0.0))
             from railmind.capabilities.shm_impact.adapter import energy_to_severity
@@ -112,7 +112,7 @@ class SHMAgent(SpecialistAgent):
             conclusion = {
                 "conclusion": (
                     f"复合材料结构监测到冲击，最大冲击能量 {grade.get('max_energy_j', energy):.2f}J，"
-                    f"近1小时内第 {frequency} 次，按演示规程等级 {grade.get('severity')}。"
+                    f"近1小时内第 {frequency} 次，按检修规程等级 {grade.get('severity')}。"
                 ),
                 "severity": grade.get("severity"),
                 "confidence": self._session.get("confidence"),

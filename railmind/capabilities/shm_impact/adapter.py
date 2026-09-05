@@ -24,7 +24,7 @@ _PACKAGED_WEIGHTS = os.path.join(os.path.dirname(__file__), "weights", "best_enh
 # 环境变量 > 能力自带权重
 DEFAULT_MODEL_PATH = os.environ.get("RAILMIND_SHM_MODEL_PATH", _PACKAGED_WEIGHTS)
 
-# 能量 → 统一严重等级（与演示规程 DOC-DEMO-001 的分级一致）
+# 能量 → 统一严重等级（与 DOC-DEMO-001 作业指引的分级一致）
 def energy_to_severity(max_energy_j: float) -> str:
     if max_energy_j >= 0.70:
         return "HIGH"      # 显著冲击：立即人工敲击/无损检测复核
