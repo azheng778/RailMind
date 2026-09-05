@@ -1,7 +1,7 @@
 """internal.shm.impact_locator —— 第 7 号能力：复合材料结构冲击定位与能量分级。
 
 复用团队复赛模型（残差 + PAN 融合 + CBAM 注意力，565K 参数），
-预处理与 semi-final/predict_enhanced.py 完全一致：
+预处理与复赛提交版 predict_enhanced.py 完全一致：
     .mat['signal'] (5000, 8) → 逐通道 Robust 缩放(中位数/IQR) → 模型 →
     位置回归(X1,Y1,X2,Y2 mm) + 双头能量分类(0.20/0.35/0.50/0.70/1.00 J)
 
@@ -18,14 +18,11 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 ENERGY_LEVELS = [0.20, 0.35, 0.50, 0.70, 1.00]
-# 能力自带权重（复赛提交版 epoch184: RMSE 40.99mm / 能量准确率 90.5%）
+# 能力自带权重（复赛提交版 epoch184: RMSE 40.99mm / 能量准确率 90.5%；离线备份在
+# 第二届轨道交通比赛/提交材料/semi-final/）
 _PACKAGED_WEIGHTS = os.path.join(os.path.dirname(__file__), "weights", "best_enhanced_model.pth")
-# 兼容旧行为：环境变量 > 能力自带权重 > semi-final 根目录
-DEFAULT_MODEL_PATH = os.environ.get(
-    "RAILMIND_SHM_MODEL_PATH",
-    _PACKAGED_WEIGHTS if os.path.exists(_PACKAGED_WEIGHTS)
-    else os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "semi-final", "best_enhanced_model.pth")),
-)
+# 环境变量 > 能力自带权重
+DEFAULT_MODEL_PATH = os.environ.get("RAILMIND_SHM_MODEL_PATH", _PACKAGED_WEIGHTS)
 
 # 能量 → 统一严重等级（与演示规程 DOC-DEMO-001 的分级一致）
 def energy_to_severity(max_energy_j: float) -> str:
@@ -37,7 +34,7 @@ def energy_to_severity(max_energy_j: float) -> str:
 
 
 class ShmImpactModel:
-    """封装 semi-final 增强模型；线程安全；延迟加载；可降级。"""
+    """封装复赛增强模型；线程安全；延迟加载；可降级。"""
 
     def __init__(self, model_path: str = DEFAULT_MODEL_PATH, device: str = "cpu"):
         self.model_path = model_path

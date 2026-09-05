@@ -33,7 +33,7 @@ requires_human_review: true
 # 模型卡摘要（完整版见 docs）
 model_card:
   architecture: EnhancedLambWaveNet (Residual + PAN-Fusion + CBAM, 565K params)
-  source: semi-final/ 复赛提交模型（第二届复合材料结构健康监测大赛）
+  source: 复赛提交模型（第二届复合材料结构健康监测大赛），原始工程归档于 第二届轨道交通比赛/提交材料/semi-final/
   metrics: { position_rmse_mm: 40.99, energy_accuracy: 0.905, note: 重训版指标 }
   input: { shape: [5000, 8], unit: "Lamb 波电压信号，8 通道" }
   output: { positions_mm: 2, energy_levels_j: [0.20, 0.35, 0.50, 0.70, 1.00] }

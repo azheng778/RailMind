@@ -91,7 +91,10 @@ Chief-Agent（LLM 大脑，自主编排 6 步；Echo 降级兜底 + 闭环保障
 
 ## ⚠️ 权重提醒
 
-`semi-final/best_enhanced_model.pth`（根目录份）为 epoch 2 欠训练残留（RMSE 192.9mm）；正确权重在
-`第二届轨道交通比赛/提交材料/` 与 `完整项目备份/`（epoch 184, RMSE 40.99mm/90.5%），本平台已使用独立拷贝。
+冲击检测正确权重（epoch 184, RMSE 40.99mm / 能量准确率 90.5%）只保留两份：平台自带
+`railmind/capabilities/shm_impact/weights/best_enhanced_model.pth`（Git 跟踪，运行时加载）与
+`第二届轨道交通比赛/提交材料/semi-final/`（离线备份）。SHM 演示样本抽取在 `datasets/shm_samples/`
+（7 条 1.00J），完整复赛数据集位置见 `datasets/DATA_MANIFEST.md`；历次整理已删除根目录 `semi-final/`、
+`完整项目备份/` 及 epoch 0/2 欠训练残留权重。
 
 > 公开/模拟数据验证不等同于真实高速动车上线认证（方案 1.4）。

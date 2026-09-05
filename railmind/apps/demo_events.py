@@ -8,7 +8,7 @@ import random
 
 _REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-SHM_TRAIN_DIR = os.path.join(_REPO, "semi-final", "Composite Material_Semi-Final_Dataset", "CompositeMaterial_Semi-Final_TrainingSet")
+SHM_TRAIN_DIR = os.path.join(_REPO, "datasets", "shm_samples")
 DOOR_DIR = os.path.join(_REPO, "pose_detect")
 PANTO_SAMPLES = os.path.join(_REPO, "datasets", "pantograph", "samples")
 ARC_DATA = os.path.join(_REPO, "datasets", "pantograph", "arcing")

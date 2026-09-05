@@ -24,7 +24,7 @@ from railmind.capabilities.shm_impact.adapter import get_model as get_shm_model
 from railmind.platform import RailMindPlatform
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TRAIN_DIR = os.path.join(REPO, "semi-final", "Composite Material_Semi-Final_Dataset", "CompositeMaterial_Semi-Final_TrainingSet")
+TRAIN_DIR = os.path.join(REPO, "datasets", "shm_samples")
 DOOR_DIR = os.path.join(REPO, "pose_detect")
 ARC_DATA = os.path.join(REPO, "datasets", "pantograph", "arcing")
 

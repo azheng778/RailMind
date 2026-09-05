@@ -31,7 +31,7 @@
 ### shm_lambwave_v1 — 复合材料 Lamb 波数据集（团队复赛数据）
 
 - **status**: INTERNAL
-- **storage**: `semi-final/Composite Material_Semi-Final_Dataset/`（105 训练 + 45 测试 .mat，5000×8）；权重 `railmind/capabilities/shm_impact/weights/best_enhanced_model.pth`（epoch184 版本，勿用 semi-final 根目录被覆盖的 epoch2 版本）
+- **storage**: 完整数据集 `第二届轨道交通比赛/提交材料/semi-final/Composite Material_Semi-Final_Dataset/`（105 训练 + 45 测试 .mat，5000×8）；演示样本 `datasets/shm_samples/`（7 条 1.00J）；权重 `railmind/capabilities/shm_impact/weights/best_enhanced_model.pth`（epoch184 版本）
 - **服务能力**: `internal.shm.impact_locator`
 
 ### 下载与转换脚本
