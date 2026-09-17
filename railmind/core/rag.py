@@ -113,6 +113,8 @@ class RagResult:
 _QUERY_EXPANSION_MAP: Dict[str, List[str]] = {
     # 复合材料
     "冲击": ["冲击", "撞击", "碰撞"],
+    "撞": ["冲击", "撞击", "碰撞"],
+    "碰撞": ["冲击", "撞击"],
     "复合材料": ["复合材料", "复材", "碳纤维"],
     "能量": ["能量", "焦耳", "J"],
     "敲击检测": ["敲击检测", "锤击", "无损检测", "NDT"],
@@ -384,18 +386,25 @@ class KnowledgeBase:
             # 从查询中提取关键词（按空格/逗号分割，或直接用查询做 BM25）
             keyword_sc = self._bm25_scores(expanded_query, indices)
 
-        # 5. 混合加权
-        # 当关键词得分为全零时抬高语义门槛，防止 ASCII 字符偶然命中中文 n-gram
+        # 5. 混合加权 + 拒答门槛（标定数据见 docs/RAG检索效果评测报告.md）
+        # 语义得分为最终拒答依据：
+        #   - 关键词路径：关键词全零 → 0.15；有匹配 → 0.08（防单个泛化词如"处置"击穿拒答，
+        #     标定：真实用例最低 0.128，跨域误配 0.04）
+        #   - 自然语言路径：BM25 字符 n-gram 恒非零不可作证据 → 绝对下限 0.06
+        #     （标定：拒答查询 ≤0.05，真实查询 ≥0.07）
         max_kw = float(keyword_sc.max()) if len(keyword_sc) > 0 else 0.0
         kw_all_zero = max_kw < 1e-9
-        sem_floor = 0.15 if kw_all_zero else 0.0
+        if keywords:
+            sem_floor = 0.15 if kw_all_zero else 0.08
+        else:
+            sem_floor = 0.15 if kw_all_zero else 0.06
 
         scored: List[Tuple[float, int]] = []
         for j, idx in enumerate(indices):
             sem = float(semantic[j]) if len(semantic) > j else 0.0
             kw = float(keyword_sc[j]) if len(keyword_sc) > j else 0.0
-            if kw < 1e-9 and sem < sem_floor:
-                continue
+            if sem < sem_floor:
+                continue  # 语义不相关一律拒答（防泛化词/字符偶然命中）
             combined = alpha * sem + (1.0 - alpha) * kw
             if combined > 1e-9:
                 scored.append((combined, idx))
