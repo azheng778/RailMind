@@ -30,3 +30,18 @@ ultralytics-main.zip
 # 根目录解压的数据集与源码包（大文件，见 datasets/DATA_MANIFEST.md）
 RailFOD23.v1i.yolov8/
 高体受电弓设备目标检测数据集 YOLO格式/
+
+# 本地应用缓存与工具状态（不上传）
+.workbuddy/
+.codex/
+
+# 数据归档目录（数据集与参赛资料另行归档，不入仓库）
+新建文件夹/
+
+# 第三方 vendored 代码（非本项目资产）
+tools/
+
+# 压缩包与日志
+*.zip
+*.rar
+*.log

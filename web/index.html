@@ -191,6 +191,7 @@
   .gauge-wrap .kmh b { font-size: 26px; color: #eaf6ff; text-shadow: 0 0 14px rgba(63,155,255,.8); }
   .gauge-wrap .kmh span { font-size: 10.5px; color: var(--dim); display: block; }
 </style>
+<link rel="stylesheet" href="/static/web/dashboard.css?v=20260914-2">
 </head>
 <body>
 <header>
@@ -369,7 +370,7 @@
 
       <div class="panel" style="margin-top:12px">
         <h3>开放能力中心 <span class="tag">热插拔能力 · 按需接入与编排</span></h3>
-        <div class="caps sm" id="caps-grid"></div>
+        <div class="caps sm" id="overview-caps-grid"></div>
         <div class="cap" style="margin-top:8px">外部能力以 REST 独立服务热注册（POST /api/v1/capabilities/register），平台不重启、Chief 主代码不改即可发现并调用；能力详情与模式管理见「能力中心」页。</div>
       </div>
     </div>
@@ -441,7 +442,7 @@
         <div class="panel mb">
           <h3>乘务员巡检 · 车厢内部实拍 <span class="tag"><span class="dot"></span>4号车厢相机 · 运行中</span></h3>
           <div class="cabin-video-wrap">
-            <video id="cabin-video" src="/static/web/assets/cabin_patrol.mp4" muted loop playsinline></video>
+            <video id="cabin-video" src="/static/web/assets/cabin_patrol.mp4" muted loop playsinline controls poster="/static/cabin_vlm/frames/w1_f1.jpg"></video>
             <div class="cabin-badge" id="cabin-badge">● CAMERA-04 · CRH-05</div>
           </div>
           <div class="cabin-timeline">
@@ -588,6 +589,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&l
 const fmtT = (ts) => { const d = new Date((ts || 0) * 1000); const p = n => String(n).padStart(2, "0"); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
 const riskCn = (l) => ({ HIGH: "高", WARNING: "中", OBSERVE: "低", NORMAL: "正常", UNKNOWN: "待复核" }[l] || l || "-");
 const modeCn = (m) => ({ PRIMARY: "主用", AUXILIARY: "辅助", OBSERVE: "观察", STANDBY: "备用", DISABLED: "禁用" }[m] || m);
+const anomalyCn = (a) => ({ door_targets_incomplete:"检查门目标不完整", door_handle_normal:"检查门把手正常", door_handle_abnormal:"检查门把手异常", cabin_patrol:"车厢巡检", pantograph_arc:"受电弓电弧", pantograph_wear_unable:"磨耗待复核", chief_decision:"综合诊断", composite_impact:"结构冲击", foreign_object_unable:"异物待复核", fastener_unable:"扣件待复核" }[a] || a || "—");
 
 setInterval(() => {
   const d = new Date(); const p = n => String(n).padStart(2, "0");
@@ -686,6 +688,7 @@ async function refreshAll() {
     if (refs) refs.innerHTML = kbl.chunks.slice(0, 2).map(c => `<div class="kbref">《${esc(c.title)}》 ${esc(c.chapter)} P${c.page}</div>`).join("");
     const cards = $("kb-cards");
     if (cards) cards.innerHTML = html;
+    window.RailUI?.knowledge(kbl.chunks);
   } catch (e) { console.error(e); }
   try {
     const evs = await api("/api/v1/events?limit=10");
@@ -709,7 +712,9 @@ function renderCaps(list) {
       </div>
     </div>`).join("")
     + `<div class="addcap" title="POST /api/v1/capabilities/register">＋ 添加能力<br><span style="font-size:10px;color:var(--dim)">支持热插拔接入</span></div>`;
+  $("overview-caps-grid").innerHTML = html;
   $("caps-grid").innerHTML = html;
+  window.RailUI?.capabilities(list);
 }
 
 function renderEvents(events) {
@@ -720,11 +725,13 @@ function renderEvents(events) {
     const wo = ev.workorder_id ? `<b style="color:var(--cyan)">${esc(ev.workorder_id)}</b>` : "—";
     const anomaly = ev.anomaly_type || ev.diagnosis?.anomaly_type || "-";
     return `<tr><td>${fmtT(ev.ts)}</td><td>${esc(ev.train_id || "-")}</td><td>${esc(ev.component || "-")}</td>
-      <td>${esc(anomaly)}</td><td><span class="lv lv-${esc(risk)}">${esc(riskCn(risk))}</span></td><td>${wo}</td></tr>`;
+      <td title="${esc(anomaly)}">${esc(anomalyCn(anomaly))}</td><td><span class="lv lv-${esc(risk)}">${esc(riskCn(risk))}</span></td><td title="${esc(ev.workorder_id || '')}">${wo}</td></tr>`;
   }).join("");
 }
 
 function renderWorkorders(list) {
+  window.RailUI?.workorders(list);
+  if (window.RailUI) return;
   $("wo-body").innerHTML = list.length ? list.map(w => {
     const acts = w.status === "DRAFT"
       ? `<button class="btn mini ok" onclick="woAct('${w.workorder_id}','confirm')">确认</button> <button class="btn mini danger" onclick="woAct('${w.workorder_id}','reject')">驳回</button>`
@@ -747,9 +754,9 @@ async function woAct(id, action) {
 }
 
 function renderChief() {
-  const ev = lastSummaries.find(e => e.summary);
+  const ev = lastSummaries.find(e => e.summary || e.specialist_conclusion);
   if (!ev) return;
-  const s = ev.summary;
+  const s = ev.summary || ev;
   $("chief-risk").className = "badge lv-" + esc(s.risk?.level || "UNKNOWN");
   $("chief-risk").textContent = riskCn(s.risk?.level) + (s.risk?.score != null ? ` · ${s.risk.score}` : "");
   const c = s.specialist_conclusion || {};
@@ -759,7 +766,7 @@ function renderChief() {
   const action = c.recommended_action ? `<div class="action">建议行动：${esc(c.recommended_action)}</div>` : "";
   $("chief-body").innerHTML = `
     <div class="conclusion">${esc(c.conclusion || "（无结论）")}</div>
-    <ul class="reasons">${reasons}</ul>${kbs}${action}${wo}
+    <details class="chief-evidence"><summary>查看诊断依据与处置建议</summary><ul class="reasons">${reasons}</ul>${kbs}${action}${wo}</details>
     <div class="cap" style="margin-top:8px">分派：${esc(s.capability?.capability_id || "-")} · 置信度 ${c.confidence ?? "-"} · 人工复核 ${s.human_review_required ? "需要" : "不需要"}</div>`;
 }
 
@@ -828,6 +835,7 @@ async function refreshStation() {
   try {
     const raw = await api("/api/v1/events/raw?anomaly=door&limit=8");
     const evs = raw.events;
+    window.RailUI?.station(evs);
     $("station-body").innerHTML = evs.length ? evs.map(ev => {
       const d = ev.diagnosis || {};
       const angles = (d.handles || []).map(h => h.angle_deg + "°").join(" / ") || "-";
@@ -945,15 +953,22 @@ function updateRoute() {
 function drawGauge() {
   const c = $("gauge-speed"); if (!c) return;
   const ctx = c.getContext("2d"); const W = c.width, H = c.height;
-  const cx = W / 2, cy = H - 16, R = Math.min(W / 2, H) - 10;
+  const cx = W / 2, cy = H - 16, R = Math.min(W / 2 - 12, cy - 12);
   ctx.clearRect(0, 0, W, H);
-  const a0 = Math.PI * 0.75, a1 = Math.PI * 2.25, VMAX = 350;
+  const a0 = Math.PI, a1 = Math.PI * 2, VMAX = 350;
   [[0, 250, "#35e08e"], [250, 310, "#29e0ff"], [310, 350, "#ffb028"]].forEach(([lo, hi, col]) => {
     ctx.beginPath();
     ctx.arc(cx, cy, R, a0 + (a1 - a0) * lo / VMAX, a0 + (a1 - a0) * hi / VMAX);
     ctx.strokeStyle = col; ctx.lineWidth = 8; ctx.stroke();
   });
   const a = a0 + (a1 - a0) * Math.min(VMAX, train.speed) / VMAX;
+  for (let tick = 0; tick <= 35; tick++) {
+    const angle = a0 + (a1 - a0) * tick / 35;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * (R - 10), cy + Math.sin(angle) * (R - 10));
+    ctx.lineTo(cx + Math.cos(angle) * (R - (tick % 5 === 0 ? 20 : 15)), cy + Math.sin(angle) * (R - (tick % 5 === 0 ? 20 : 15)));
+    ctx.strokeStyle = '#1284b0'; ctx.lineWidth = 1; ctx.stroke();
+  }
   ctx.beginPath(); ctx.moveTo(cx, cy);
   ctx.lineTo(cx + Math.cos(a) * (R - 16), cy + Math.sin(a) * (R - 16));
   ctx.strokeStyle = "#eaf6ff"; ctx.lineWidth = 3; ctx.stroke();
@@ -1017,6 +1032,7 @@ async function refreshCabin() {
   try {
     const raw = await api("/api/v1/events/raw?anomaly=cabin&limit=8");
     const evs = raw.events;
+    window.RailUI?.cabin(evs);
     $("cabin-tag").textContent = evs.length ? `最近 ${evs.length} 条` : "";
     if (evs.length) renderCabinWindows(evs[0]);
     $("cabin-body").innerHTML = evs.length ? evs.map(ev => {
@@ -1090,5 +1106,6 @@ function trainResume() {
 refreshAll();
 setInterval(refreshAll, 8000);
 </script>
+<script src="/static/web/dashboard.js?v=20260914-2"></script>
 </body>
 </html>
