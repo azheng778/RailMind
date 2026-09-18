@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from railmind.core.rag import KBChunk, VERSION_DRAFT, VERSION_ACTIVE, VERSION_OBSOLETE
 from railmind.core.registry import RegistrationError
 from railmind.platform import RailMindPlatform
 
@@ -68,8 +69,95 @@ def create_app(platform: Optional[RailMindPlatform] = None) -> FastAPI:
 
     @app.get("/api/v1/kb/stats")
     def kb_stats() -> Dict[str, Any]:
-        docs = {c.document_id for c in pf.rag.kb}
-        return {"documents": len(docs), "chunks": len(pf.rag.kb), "queries": len(pf.rag.query_log)}
+        """知识库统计（增强版：文档数/块数/活跃块数/查询数/反馈数/词表大小）。"""
+        return pf.rag.stats()
+
+    @app.get("/api/v1/kb/list")
+    def kb_list(
+        status: Optional[str] = None,
+        asset_type: Optional[str] = None,
+        limit: int = 200,
+    ) -> Dict[str, Any]:
+        """知识库条目列表（可过滤状态与资产类型）。"""
+        chunks = pf.rag.list_chunks(status=status)
+        if asset_type:
+            chunks = [c for c in chunks if c.asset_type == asset_type]
+        return {
+            "total": len(chunks),
+            "chunks": [
+                {
+                    "document_id": c.document_id,
+                    "title": c.title,
+                    "chapter": c.chapter,
+                    "page": c.page,
+                    "version": c.version,
+                    "status": c.effective_status,
+                    "asset_type": c.asset_type,
+                    "fault_type": c.fault_type,
+                    "tags": c.tags,
+                    "text": c.text[:160],
+                }
+                for c in chunks[:limit]
+            ],
+        }
+
+    @app.post("/api/v1/kb/search")
+    def kb_search(body: Dict[str, Any]) -> Dict[str, Any]:
+        """自然语言知识检索。
+
+        Body:
+            query: 查询文本（必填）。
+            asset_type: 可选的资产类型过滤。
+            top_k: 返回条数（默认3）。
+        """
+        query = str(body.get("query", "")).strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="query 不能为空")
+        result = pf.rag.search(
+            query_text=query,
+            asset_type=body.get("asset_type"),
+            top_k=body.get("top_k"),
+        )
+        return {
+            "refused": result.refused,
+            "time_ms": round(result.query_time_ms, 1),
+            "citations": result.answer_basis,
+            "note": result.refused_text if result.refused else None,
+        }
+
+    @app.post("/api/v1/kb/feedback")
+    def kb_feedback(body: Dict[str, Any]) -> Dict[str, Any]:
+        """记录用户对检索结果的反馈。
+
+        Body:
+            query: 用户查询。
+            document_id: 被评价的知识条目 ID。
+            rating: 评分（1-5）。
+            comment: 可选评语。
+        """
+        query = str(body.get("query", "")).strip()
+        doc_id = str(body.get("document_id", "")).strip()
+        rating = int(body.get("rating", 3))
+        if not query or not doc_id:
+            raise HTTPException(status_code=400, detail="query 和 document_id 不能为空")
+        pf.rag.record_feedback(query=query, document_id=doc_id, rating=rating, comment=str(body.get("comment", "")))
+        return {"ok": True}
+
+    @app.post("/api/v1/kb/rebuild")
+    def kb_rebuild() -> Dict[str, Any]:
+        """强制重建 TF-IDF 向量索引。"""
+        pf.rag.rebuild_index()
+        return {"ok": True, "stats": pf.rag.stats()}
+
+    @app.get("/api/v1/kb/queries")
+    def kb_queries(limit: int = 20) -> Dict[str, Any]:
+        """最近查询日志。"""
+        return {"queries": pf.rag.recent_queries(limit=limit)}
+
+    @app.get("/api/v1/kb/feedback")
+    def kb_feedback_log(limit: int = 20) -> Dict[str, Any]:
+        """最近反馈记录。"""
+        return {"feedback": pf.rag.recent_feedback(limit=limit)}
 
     @app.post("/api/v1/events/demo/{kind}")
     def demo_event(kind: str) -> Dict[str, Any]:
@@ -123,24 +211,6 @@ def create_app(platform: Optional[RailMindPlatform] = None) -> FastAPI:
     ) -> Dict[str, Any]:
         """原始能力诊断事件（含 diagnosis 明细，供运行中监测/线路侧页面）。"""
         return {"events": pf.events.list_raw(limit=limit, anomaly_type=anomaly, capability_id=capability, train_id=train)}
-
-    @app.get("/api/v1/kb/list")
-    def kb_list() -> Dict[str, Any]:
-        """知识库条目列表（文档/章节/页码/正文摘要）。"""
-        return {
-            "chunks": [
-                {
-                    "document_id": c.document_id,
-                    "title": c.title,
-                    "chapter": c.chapter,
-                    "page": c.page,
-                    "version": c.version,
-                    "status": c.effective_status,
-                    "text": c.text[:160],
-                }
-                for c in pf.rag.kb
-            ]
-        }
 
     @app.post("/api/v1/workorders/{workorder_id}/close")
     def close_workorder(workorder_id: str, body: ReviewBody) -> Dict[str, Any]:
